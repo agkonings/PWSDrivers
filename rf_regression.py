@@ -33,8 +33,8 @@ def cleanup_data(path):
     store = pd.HDFStore(path)
     df =  store['df']   # save it
     store.close()
-    #df.drop(["lc","isohydricity",'root_depth', 'hft', 'p50', 'gpmax', 'c', 'g1',"dry_season_length","lat","lon"],axis = 1, inplace = True)
-    df.drop(["lc","ndvi","hft","sand",'vpd_cv',"ppt_lte_100","thetas","dry_season_length","t_mean","t_std","lat","lon"],axis = 1, inplace = True)
+    #df.drop(["lc","isohydricity",'root_depth', 'hft', 'p50', 'c', 'g1',"dry_season_length","lat","lon"],axis = 1, inplace = True)
+    df.drop(["lc","vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi","hft","sand",'vpd_cv',"ppt_lte_100","thetas","dry_season_length","t_mean","t_std","lat","lon"],axis = 1, inplace = True)
     #df.drop(["lc","ndvi","dry_season_length","lat","lon"],axis = 1, inplace = True)
     df.dropna(inplace = True)
     df.reset_index(inplace = True, drop = True)
@@ -200,7 +200,7 @@ def plot_corr_feats(df):
     sns.heatmap(corrMat, 
             xticklabels=prettify_names(corrMat.columns.values),
             yticklabels=prettify_names(corrMat.columns.values),
-            cmap = r2bcmap, vmin=-0.65, vmax=0.65)
+            cmap = r2bcmap, vmin=-0.75, vmax=0.75)
 
 def plot_preds_actual(X_test, y_test, regrn, score):
     """
@@ -210,8 +210,8 @@ def plot_preds_actual(X_test, y_test, regrn, score):
     
     fig, ax = plt.subplots(figsize = (3,3))
     ax.scatter(y_hat, y_test, s = 1, alpha = 0.05, color = "k")
-    ax.set_xlabel("Predicted PWS")
-    ax.set_ylabel("Actual PWS")
+    ax.set_xlabel("Predicted PWS", fontsize = 18)
+    ax.set_ylabel("Actual PWS", fontsize = 18)
     ax.set_xlim(0,2)
     ax.set_ylim(0,2)
     ax.annotate(f"R$^2$={score:0.2f}", (0.1,0.9),xycoords = "axes fraction", ha = "left")
@@ -364,7 +364,7 @@ def plot_pdp(regr, X_test):
     # Which features need PDPs? print below line and choose the numbers
     # corresponding to the feature
     print(list(zip(X_test.columns, range(X_test.shape[1]))))
-    features = [3,7, 12, 4, 13, 11, 18, 2]
+    features = np.arange(X_test.shape[1]) #[2,3,7, 12, 4, 13, 11, 18]
     feature_names = list(X_test.columns[features])
     feature_names = prettify_names(feature_names)
     for feature, feature_name in zip(features, feature_names):
@@ -373,6 +373,8 @@ def plot_pdp(regr, X_test):
         ax.plot(pd_results[1][0], pd_results[0][0])
         ax.set_xlabel(feature_name, fontsize = 18)
         ax.set_ylabel("Plant-water sensitivity", fontsize = 18)
+        plt.xticks(fontsize = 16)
+        plt.yticks(fontsize = 16)
         plt.show()
     
     
@@ -395,7 +397,7 @@ def main():
     ax = plot_importance_by_category(imp)
     ax = plot_importance_plants(imp)
     ax = plot_preds_actual(X_test, y_test, regrn, score)
-    #plot_pdp(regrn, X_test)
+    plot_pdp(regrn, X_test)
     
 
 if __name__ == "__main__":
