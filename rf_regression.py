@@ -19,6 +19,9 @@ import matplotlib.patches
 import sklearn.inspection
 from sklearn.inspection import permutation_importance
 import sklearn.metrics
+import shap
+import time
+import pickle
 
 import dirs
 
@@ -387,8 +390,47 @@ def main():
     df = cleanup_data(path)
     
     #%% Train rf
+    start0 = time.time()
     X_test, y_test, regrn, score,  imp = regress(df)  
-     
+    end0 = time.time()
+    print("Time for 91 runs: ", end0-start0)
+    print("Starting shapley")
+    start = time.time()    
+    #X100 = shap.utils.sample(X_test, 100) # 100 instances for use as the background distribution
+    explainer = shap.TreeExplainer(regrn)
+    end1 = time.time()
+    print("Time main step: ", end1-start)
+    shap_values = explainer.shap_values(X_test)
+    end2 = time.time()
+    print("Time both steps: ", end2-start)
+    
+    #save to pickle
+    filename = 'shapvals.pkl'    
+    outfile = open(filename,'wb')
+    pickle.dump(shap_values, outfile)
+    pickle.dump(explainer, outfile) 
+    pickle.dump(X100, outfile)
+    outfile.close()
+    
+    #make map
+    shap_Ks = shap_values[:,'ks']
+    filename = os.path.join("C:/repos/data/pws_features/PWS_through2021.tif") #load an old PWS file. 
+    ds = gdal.Open(filename)
+    geotransform = ds.GetGeoTransform()
+    pws = np.array(ds.GetRasterBand(1).ReadAsArray())
+    
+    errorMap = np.empty( np.shape(pws) ) * np.nan
+    
+    store = pd.HDFStore(path)
+    df2 =  store['df']   # save it
+    store.close()
+    df2.dropna(inplace = True)
+    
+    latInd = np.round( (df2['lat'].to_numpy() - geotransform[3])/geotransform[5] ).astype(int)
+    lonInd = np.round( (df2['lon'].to_numpy() - geotransform[0])/geotransform[1] ).astype(int)
+    shapMap[latInd, lonInd] = shap_Ks 
+    
+    
     #%% make plots
     ax = plot_corr_feats(df)
     #still a bug somewhere in plot_error_pattern, ignroe for now
