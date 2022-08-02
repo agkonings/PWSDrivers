@@ -399,20 +399,24 @@ def main():
     #X100 = shap.utils.sample(X_test, 100) # 100 instances for use as the background distribution
     explainer = shap.TreeExplainer(regrn)
     end1 = time.time()
-    print("Time main step: ", end1-start)
-    shap_values = explainer.shap_values(X_test)
+    print("Time main step: ", end1-start) #only takes 0.17 seconds with treeexplainer    
+    shap_values = explainer.shap_values(X_test[1:400])
     end2 = time.time()
-    print("Time both steps: ", end2-start)
+    #this is probably longer, but could do tests by only running a supbset of X_test
+    #that should scale.#384 for 400
+    #indeed, would take about 55 hours of runtime. 
+    print("Time both steps: ", end2-start) 
+    print("size X_test: ", len(X_test))
     
     #save to pickle
     filename = 'shapvals.pkl'    
     outfile = open(filename,'wb')
     pickle.dump(shap_values, outfile)
     pickle.dump(explainer, outfile) 
-    pickle.dump(X100, outfile)
+    #pickle.dump(X100, outfile)
     outfile.close()
     
-    #make map
+    #make map. NEEDS TO BE DEBUGGED
     shap_Ks = shap_values[:,'ks']
     filename = os.path.join("C:/repos/data/pws_features/PWS_through2021.tif") #load an old PWS file. 
     ds = gdal.Open(filename)
