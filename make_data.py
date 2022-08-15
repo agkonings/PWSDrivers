@@ -21,15 +21,13 @@ import dirs
 sns.set(font_scale = 0.6, style = "ticks")
 
 
-def get_value(filename, mx, my, band = 1):
+def get_value(filename, band = 1):
     """
     Vector implementation of query of raster value at lats and lons
 
     Parameters
     ----------
-    filename : raster path
-    mx : Lon values (list or array)
-    my : lat values (list or array)
+    filename : raster path    
     band : band position to query. int, optional. The default is 1.
 
     Returns
@@ -38,13 +36,12 @@ def get_value(filename, mx, my, band = 1):
 
     """
     ds = gdal.Open(filename)
-    gt = ds.GetGeoTransform()
-    data = ds.GetRasterBand(band).ReadAsArray()
-    px = ((mx - gt[0]) / gt[1]).astype(int) #x pixel
-    py = ((my - gt[3]) / gt[5]).astype(int) #y pixel
+    data = ds.GetRasterBand(band).ReadAsArray()    
     ds = None
-    return data[py,px]
-    
+    return data
+
+
+
 def get_lats_lons(data, gt):
     """
     Fetch list of lats and lons corresponding to geotransform and 2D numpy array
@@ -95,88 +92,92 @@ def create_df(array,keys):
         ctr+=1
     return df
 
+def check_regridding(gtPWS, gtShape):    
+    for file in featFiles:
+        filepath = os.path.join(regridDataDir, file)
+        ds = gdal.Open(filepath)
+        gt = ds.GetGeoTransform()
+        fileData = ds.GetRasterBand(1).ReadAsArray()
+        if fileData.shape != gtShape or gt != gtPWS:
+            print('checked ' + file + ': WARNING HAS PROBLEM')
+            if fileData.shape != gtShape:
+                print('checked ' + file + ': shape HAS PROBLEM')
+            if gt != gtPWS:   
+                print('checked ' + file + ': geotransform HAS PROBLEM')
+        else: 
+            print('checked ' + file + ': all good') 
+
 def create_h5(store_path):
     """
     Bring together all features and labels (pws). drop nans. Store it as a h5
     file. And return it as a dataframe of shape (# of examples, # of features + 1)
+                                                 
     Returns
     -------
     df : pandas dataframe
 
     """
     data = dict()
-    ds = gdal.Open(os.path.join(dirs.dir_data, "pws_features","PWS_through2021.tif"))
-    gt = ds.GetGeoTransform()
-    data['pws'] = np.array(ds.GetRasterBand(1).ReadAsArray())
+    dsPWS = gdal.Open(os.path.join(dirs.dir_data, "pws_features","PWS_through2021.tif"))
+    gtPWS = dsPWS.GetGeoTransform()
+    data['pws'] = np.array(dsPWS.GetRasterBand(1).ReadAsArray())
+    lats, lons = get_lats_lons(data['pws'], gtPWS)
     
-    lats, lons = get_lats_lons(data['pws'], gt)
+    regridDir = 'G:/My Drive/0000WorkComputer/dataStanford/PWSFeatures/resampled'
+    featFiles = os.listdir(regridDir)
     
-    keys = ['pws','silt','sand','clay', 'ks','thetas','isohydricity',\
-        'root_depth','canopy_height','hft','p50','gpmax', 'c','g1','pft',
+    #check that all files are now regridded properly with same geotransform and
+    #shape. Note that land cover file has problems. Just don't load for now
+    #check_regridding(gtPWS, data['pws'].shape)    
+    
+    keys = ['pws','silt','clay','ks','thetas','vanGen_n','isohydricity',\
+        'root_depth','canopy_height','p50','gpmax', 'c','g1','nlcd',
         "elevation","aspect","slope","twi","dry_season_length","ndvi",\
-            "vpd_mean","vpd_cv", "dist_to_water","agb","ppt_mean","ppt_cv","lc",\
-                "t_mean","t_std","ppt_lte_100", "lon","lat","vanGen_n"]
+            "vpd_mean","vpd_cv", "dist_to_water","agb","ppt_mean","ppt_cv",\
+        "t_mean","t_std","ppt_lte_100", "AI","Sr","Sbedrock", "lon","lat"]
     
     array = np.zeros((len(keys), data['pws'].shape[0],data['pws'].shape[1])).astype('float')
     array[0] = data['pws']
     
     
-
-    array[1]= get_value(os.path.join(dirs.dir_data, "pws_features","Unified_NA_Soil_Map_Subsoil_Silt_Fraction.tif"),lons,lats)
-    array[2]= get_value(os.path.join(dirs.dir_data, "pws_features","Unified_NA_Soil_Map_Subsoil_Sand_Fraction.tif"),lons,lats)
-    array[3]= get_value(os.path.join(dirs.dir_data, "pws_features","Unified_NA_Soil_Map_Subsoil_Clay_Fraction.tif"),lons,lats)
-    array[4]= get_value(os.path.join(dirs.dir_data, "pws_features","Ks_30cm.tif"),lons,lats)
-    array[5]= get_value(os.path.join(dirs.dir_data, "pws_features","thetas_30cm.tif"),lons,lats)
+    #add data one by one
+    array[1] = get_value( os.path.join(regridDir, 'Unified_NA_Soil_Map_Subsoil_Silt_Fraction.tif'), 1)
+    array[2] = get_value( os.path.join(regridDir, 'Unified_NA_Soil_Map_Subsoil_Clay_Fraction.tif'), 1)
+    array[3] = get_value( os.path.join(regridDir, 'Ks_30cm.tif'), 1)
+    array[4] = get_value( os.path.join(regridDir, 'thetas_30cm.tif'), 1)
+    array[5] = get_value( os.path.join(regridDir, 'vanGen_n_30cm.tif'), 1)    
+    array[6] = get_value( os.path.join(regridDir, 'isohydricity.tif'), 1)
+    array[7] = get_value( os.path.join(regridDir, 'root_depth.tif'), 1)
+    array[8] = get_value( os.path.join(regridDir, 'canopy_height.tif'), 1)
+    array[9] = get_value( os.path.join(regridDir, 'P50_liu.tif'), 1)
+    array[10] = get_value( os.path.join(regridDir, 'gpmax_50.tif'), 1)
+    array[11] = get_value( os.path.join(regridDir, 'C_50.tif'), 1)
+    array[12] = get_value( os.path.join(regridDir, 'g1_50.tif'), 1)
+    array[13] = get_value( os.path.join(regridDir, 'nlcd_2016_4km.tif'), 1)    
+    array[14] = get_value( os.path.join(regridDir, 'usa_dem.tif'), 1)    
+    array[15] = get_value( os.path.join(regridDir, 'usa_aspect_wgs1984_clip.tif'), 1)    
+    array[16] = get_value( os.path.join(regridDir, 'usa_slope_project.tif'), 1)    
+    array[17] = get_value( os.path.join(regridDir, 'twi.tif'), 1)    
+    array[18] = get_value( os.path.join(regridDir, 'fireSeasonLength.tif'), 1)    
+    array[19] = get_value( os.path.join(regridDir, 'ndvi_mean.tif'), 1)    
+    array[20] = get_value( os.path.join(regridDir, 'vpd_mean.tif'), 1)    
+    vpdStd = get_value( os.path.join(regridDir, 'vpdStd.tif'), 1)        
+    array[21] = vpdStd/array[19]
+    array[22] = get_value( os.path.join(regridDir, 'distance_to_water_bodies.tif'), 1)    
+    array[23] = get_value( os.path.join(regridDir, 'agb_2020.tif'), 1)    
+    array[24] = get_value( os.path.join(regridDir, 'pptMean.tif'), 1)    
+    pptStd = get_value( os.path.join(regridDir, 'pptStd.tif'), 1)
+    array[25] = pptStd/array[23]  
+    #note different bands due to bug in file creation
+    array[26] = get_value( os.path.join(regridDir, 'tMean.tif'), 2)    
+    array[27] = get_value( os.path.join(regridDir, 'tStd.tif'), 2)    
+    array[28] = get_value( os.path.join(regridDir, 'ppt_lte_100.tif'), 1)    
+    array[29] = get_value( os.path.join(regridDir, 'aridity_index.tif'), 1)
+    array[30] = get_value( os.path.join(regridDir, 'Sr.tif'), 1)    
+    array[31] = get_value( os.path.join(regridDir, 'Sbedrock.tif'), 1)        
+    array[32] = lons
+    array[33] = lats    
     
-
-    
-    array[6]= get_value(os.path.join(dirs.dir_data, "pws_features","isohydricity.tif"),lons,lats)
-    array[7] = get_value(os.path.join(dirs.dir_data, "pws_features","root_depth.tif"),lons,lats)
-    array[8] = get_value(os.path.join(dirs.dir_data, "pws_features","canopy_height.tif"),lons,lats)
-    array[9]= get_value(os.path.join(dirs.dir_data, "pws_features","HFT.tif"),lons,lats)
-    array[10]= get_value(os.path.join(dirs.dir_data, "pws_features","P50_liu.tif"),lons,lats)
-    array[11]= get_value(os.path.join(dirs.dir_data, "pws_features","gpmax_50.tif"),lons,lats)
-    array[12]= get_value(os.path.join(dirs.dir_data, "pws_features","C_50.tif"),lons,lats)
-    array[13]= get_value(os.path.join(dirs.dir_data, "pws_features","g1_50.tif"),lons,lats)
-    array[14]= get_value(os.path.join(dirs.dir_data, "pws_features","nlcd_2016_4km.tif"),lons,lats)
-    
-    array[15] = get_value(os.path.join(dirs.dir_data, "pws_features","usa_dem.tif"),lons,lats)
-    array[16] = get_value(os.path.join(dirs.dir_data, "pws_features","usa_aspect_wgs1984_clip.tif"),lons,lats)
-    array[17] = get_value(os.path.join(dirs.dir_data, "pws_features","usa_slope_project.tif"),lons,lats)
-    array[18]= get_value(os.path.join(dirs.dir_data, "pws_features","twi.tif"),lons,lats)
-    
-    band = 1
-    ds = gdal.Open(os.path.join(dirs.dir_data, "pws_features","fireSeasonLength.tif"))
-    array[19]= ds.GetRasterBand(band).ReadAsArray()
-    ds =  gdal.Open(os.path.join(dirs.dir_data, "pws_features","ndvi_mean.tif"))
-    array[20] =ds.GetRasterBand(band).ReadAsArray()
-    ds = gdal.Open(os.path.join(dirs.dir_data, "pws_features","vpd_mean.tif"))
-    array[21] = ds.GetRasterBand(band).ReadAsArray()
-    ds = gdal.Open(os.path.join(dirs.dir_data, "pws_features","vpdStd.tif"))
-    vpdStd = ds.GetRasterBand(band).ReadAsArray()
-    array[22]= vpdStd/array[21]
-    ds = gdal.Open(os.path.join(dirs.dir_data, "pws_features","distance_to_water_bodies.tif"))
-    array[23]= ds.GetRasterBand(band).ReadAsArray()
-    ds = gdal.Open(os.path.join(dirs.dir_data, "pws_features","agb_2020.tif"))
-    array[24]= ds.GetRasterBand(band).ReadAsArray()
-    ds = gdal.Open(os.path.join(dirs.dir_data, "pws_features","pptMean.tif"))
-    array[25]= ds.GetRasterBand(band).ReadAsArray()
-    ds = gdal.Open(os.path.join(dirs.dir_data, "pws_features","pptStd.tif"))
-    pptStd = ds.GetRasterBand(band).ReadAsArray()
-    array[26]= pptStd/array[25]
-    ds = gdal.Open(os.path.join(dirs.dir_data, "pws_features","landcover.tif"))
-    array[27]= ds.GetRasterBand(band).ReadAsArray()
-    ds = gdal.Open(os.path.join(dirs.dir_data, "pws_features","tMean.tif"))
-    #note + 1 (previous bug in file generation)
-    array[28]= ds.GetRasterBand(band+1).ReadAsArray()  
-    ds = gdal.Open(os.path.join(dirs.dir_data, "pws_features","tStd.tif"))
-    #note + 1 (previous bug in file generation)
-    array[29]= ds.GetRasterBand(band+1).ReadAsArray() 
-    ds = gdal.Open(os.path.join(dirs.dir_data, "pws_features","ppt_lte_100.tif"))
-    array[30]= ds.GetRasterBand(band).ReadAsArray() 
-    array[31]= lons
-    array[32]= lats    
-    array[33]= get_value(os.path.join(dirs.dir_data, "pws_features","vanGen_n_30cm.tif"),lons,lats)
     
     ds = None
     
@@ -185,12 +186,11 @@ def create_h5(store_path):
     
     df.describe()
     df.loc[df['silt']<-1] = np.nan
-    df.loc[df['sand']<-1] = np.nan
     df.loc[df['clay']<-1] = np.nan
     df.loc[df['ks']<-1] = np.nan
     df.loc[df['thetas']<-1] = np.nan
-    df.loc[df['pft']<41] = np.nan
-    df.loc[df['pft']>81] = np.nan
+    df.loc[df['nlcd']<41] = np.nan
+    df.loc[df['nlcd']>81] = np.nan
     df.loc[df['elevation']<-1e3] = np.nan
     df.loc[df['slope']<-1e3] = np.nan
     df.loc[df['aspect']>2e3] = np.nan
@@ -204,7 +204,7 @@ def create_h5(store_path):
     pws = np.array(ds.GetRasterBand(1).ReadAsArray())
     #plot map
     df2 = df.copy()
-    droppedFeats = ["pws", 'sand', 'silt', 'clay', 'ks', 'thetas', 'pft', 
+    droppedFeats = ["pws", 'silt', 'clay', 'ks', 'thetas', 'nlcd', 
                    'elevation', 'slope', 'aspect', 'twi']
     df2.dropna(subset = droppedFeats, inplace = True)
     latMap = np.empty( np.shape(pws) ) * np.nan
@@ -218,7 +218,6 @@ def create_h5(store_path):
     
     df.loc[df['isohydricity']>1e3] = np.nan
     df.loc[df['root_depth']<-1] = np.nan
-    df.loc[df['hft']<-1e3] = np.nan
     df.loc[df['p50']<-1e3] = np.nan
     df.loc[df['gpmax']<-1e3] = np.nan
     df.loc[df['c']<-1e3] = np.nan
@@ -249,7 +248,7 @@ def plot_heatmap(df):
     """
     Make a heatmap of correlations between PWS and features.
     """
-    sample = df.sample(1e4)
+    sample = df.sample(10000)
     sns.pairplot(sample)
     
     
@@ -280,8 +279,7 @@ def plot_heatmap(df):
 
 def main():
     #%% make and save dataframe:
-    store_path = os.path.join(dirs.dir_data, 'store_plant_soil_topo_climate_PWSthrough2021v3.h5')
-    # This can be run in Krishna's computer only because there are many tif files required
+    store_path = os.path.join(dirs.dir_data, 'store_plant_soil_topo_climate_PWSvAlex.h5')
     create_h5(store_path)
     
     #%% Load h5
@@ -293,7 +291,7 @@ def main():
     df.columns = df.columns.astype(str)    
     
     #%% Plot heatmap
-    # plot_heatmap(df)
+    plot_heatmap(df)
         
 if __name__ == "__main__":
     main()

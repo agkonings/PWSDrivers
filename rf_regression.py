@@ -34,7 +34,7 @@ def cleanup_data(path):
     df =  store['df']   # save it
     store.close()
     #df.drop(["lc","isohydricity",'root_depth', 'hft', 'p50', 'c', 'g1',"dry_season_length","lat","lon"],axis = 1, inplace = True)
-    df.drop(["lc","vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi","hft","sand",'vpd_cv',"ppt_lte_100","thetas","dry_season_length","t_mean","t_std","lat","lon"],axis = 1, inplace = True)
+    df.drop(["vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi",'vpd_cv',"ppt_lte_100","thetas","dry_season_length","t_mean","t_std","lat","lon","Sr","Sbedrock"],axis = 1, inplace = True)
     #df.drop(["lc","ndvi","dry_season_length","lat","lon"],axis = 1, inplace = True)
     df.dropna(inplace = True)
     df.reset_index(inplace = True, drop = True)
@@ -53,11 +53,11 @@ def get_categories_and_colors():
     yellow = "khaki"
     purple = "magenta"
     
-    plant = ['canopy_height', "agb",'ndvi', "lc","pft"]
-    soil = ['sand',  'clay', 'silt','thetas', 'ks', 'vanGen_n']
-    climate = [ 'dry_season_length', 'vpd_mean', 'vpd_cv',"ppt_mean","ppt_cv","t_mean","t_std","ppt_lte_100"]
+    plant = ['canopy_height', "agb",'ndvi', "nlcd"]
+    soil = ['clay', 'silt','thetas', 'ks', 'vanGen_n','Sr','Sbedrock']
+    climate = [ 'dry_season_length', 'vpd_mean', 'vpd_cv',"ppt_mean","ppt_cv","t_mean","t_std","ppt_lte_100","AI"]
     topo = ['elevation', 'aspect', 'slope', 'twi',"dist_to_water"]
-    traits = ['isohydricity', 'root_depth', 'hft', 'p50', 'gpmax', 'c', 'g1']
+    traits = ['isohydricity', 'root_depth', 'p50', 'gpmax', 'c', 'g1']
     
     return green, brown, blue, yellow, purple, plant, soil, climate, topo, traits
 
@@ -84,7 +84,7 @@ def prettify_names(names):
                  "c":"Xylem\ncapacitance",
                  "g1":"g$_1$",
                  "n":"$n$",
-                 "pft":"Plant Functional Type",
+                 "nlcd": "land cover",
                  "aspect":"Aspect",
                  "slope":"Slope",
                  "twi":"TWI",
@@ -94,7 +94,8 @@ def prettify_names(names):
                  "t_std":"Temp$_{st dev}$",
                  "lon":"Lon",
                  "lat":"Lat",
-                 "vanGen_n":"van Genuchten n"
+                 "vanGen_n":"van Genuchten n",
+                 "AI":"Aridity Index",
                  }
     return [new_names[key] for key in names]
     
@@ -379,27 +380,22 @@ def plot_pdp(regr, X_test):
     
     
     
-def main():
-    plt.rcParams.update({'font.size': 18})
+plt.rcParams.update({'font.size': 18})
 
-    #%% Load data
-    path = os.path.join(dirs.dir_data, 'store_plant_soil_topo_climate_PWSthrough2021v3.h5')
-    df = cleanup_data(path)
+#%% Load data
+path = os.path.join(dirs.dir_data, 'store_plant_soil_topo_climate_PWSvAlex.h5')
+df = cleanup_data(path)
+
+#%% Train rf
+X_test, y_test, regrn, score,  imp = regress(df)  
+ 
+#%% make plots
+ax = plot_corr_feats(df)
+#still a bug somewhere in plot_error_pattern, ignroe for now
+#ax = plot_error_pattern(path, df)
+ax = plot_importance(imp)
+ax = plot_importance_by_category(imp)
+ax = plot_importance_plants(imp)
+ax = plot_preds_actual(X_test, y_test, regrn, score)
+plot_pdp(regrn, X_test)
     
-    #%% Train rf
-    X_test, y_test, regrn, score,  imp = regress(df)  
-     
-    #%% make plots
-    ax = plot_corr_feats(df)
-    #still a bug somewhere in plot_error_pattern, ignroe for now
-    #ax = plot_error_pattern(path, df)
-    ax = plot_importance(imp)
-    ax = plot_importance_by_category(imp)
-    ax = plot_importance_plants(imp)
-    ax = plot_preds_actual(X_test, y_test, regrn, score)
-    plot_pdp(regrn, X_test)
-    
-
-if __name__ == "__main__":
-    main()
-
