@@ -134,7 +134,7 @@ def create_h5(store_path):
         'root_depth','canopy_height','p50','gpmax', 'c','g1','nlcd',
         "elevation","aspect","slope","twi","dry_season_length","ndvi",\
             "vpd_mean","vpd_cv", "dist_to_water","agb","ppt_mean","ppt_cv",\
-        "t_mean","t_std","ppt_lte_100", "AI","Sr","Sbedrock", "lon","lat"]
+        "t_mean","t_std","ppt_lte_100", "AI","Sr","Sbedrock", "species", "lon","lat"]
     
     array = np.zeros((len(keys), data['pws'].shape[0],data['pws'].shape[1])).astype('float')
     array[0] = data['pws']
@@ -175,8 +175,9 @@ def create_h5(store_path):
     array[29] = get_value( os.path.join(regridDir, 'aridity_index.tif'), 1)
     array[30] = get_value( os.path.join(regridDir, 'Sr.tif'), 1)    
     array[31] = get_value( os.path.join(regridDir, 'Sbedrock.tif'), 1)        
-    array[32] = lons
-    array[33] = lats    
+    array[32] = get_value( 'C:/repos/data/FIADomSpecies.tif', 1)        
+    array[33] = lons
+    array[34] = lats  
     
     
     ds = None
@@ -198,7 +199,7 @@ def create_h5(store_path):
     
     #plot map of where there is data
     #first load pws to get grid size
-    filename = os.path.join("C:/repos/data/pws_features/PWS_through2021.tif") #load an old PWS file. 
+    filename = os.path.join("C:/repos/data/pws_features/PWS_through2021_allSeas.tif") #load an old PWS file. 
     ds = gdal.Open(filename)
     geotransform = ds.GetGeoTransform()
     pws = np.array(ds.GetRasterBand(1).ReadAsArray())

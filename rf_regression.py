@@ -25,7 +25,7 @@ import dirs
 sns.set(font_scale = 1, style = "ticks")
 plt.rcParams.update({'font.size': 18})
 
-def cleanup_data(path):
+def cleanup_data(path, droppedVarsList):
     """
     path is where h5 file is stored
     """
@@ -33,9 +33,7 @@ def cleanup_data(path):
     store = pd.HDFStore(path)
     df =  store['df']   # save it
     store.close()
-    #df.drop(["lc","isohydricity",'root_depth', 'hft', 'p50', 'c', 'g1',"dry_season_length","lat","lon"],axis = 1, inplace = True)
-    df.drop(["vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi",'vpd_cv',"ppt_lte_100","thetas","dry_season_length","t_mean","t_std","lat","lon","Sr","Sbedrock"],axis = 1, inplace = True)
-    #df.drop(["lc","ndvi","dry_season_length","lat","lon"],axis = 1, inplace = True)
+    df.drop(droppedVarsList, axis = 1, inplace = True)
     df.dropna(inplace = True)
     df.reset_index(inplace = True, drop = True)
     
@@ -53,7 +51,7 @@ def get_categories_and_colors():
     yellow = "khaki"
     purple = "magenta"
     
-    plant = ['canopy_height', "agb",'ndvi', "nlcd"]
+    plant = ['canopy_height', "agb",'ndvi', "nlcd","species"]
     soil = ['clay', 'silt','thetas', 'ks', 'vanGen_n','Sr','Sbedrock']
     climate = [ 'dry_season_length', 'vpd_mean', 'vpd_cv',"ppt_mean","ppt_cv","t_mean","t_std","ppt_lte_100","AI"]
     topo = ['elevation', 'aspect', 'slope', 'twi',"dist_to_water"]
@@ -96,6 +94,7 @@ def prettify_names(names):
                  "lat":"Lat",
                  "vanGen_n":"van Genuchten n",
                  "AI":"Aridity Index",
+                 "species":"species",
                  }
     return [new_names[key] for key in names]
     
@@ -382,9 +381,13 @@ def plot_pdp(regr, X_test):
     
 plt.rcParams.update({'font.size': 18})
 
+
 #%% Load data
 path = os.path.join(dirs.dir_data, 'store_plant_soil_topo_climate_PWSvAlex.h5')
-df = cleanup_data(path)
+#oldList: ["lc","isohydricity",'root_depth', 'hft', 'p50', 'c', 'g1',"dry_season_length","lat","lon"],axis = 1, inplace = True)
+droppedVarsList = ["species","vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi",'vpd_cv',"ppt_lte_100","thetas","dry_season_length","t_mean","t_std","lat","lon","Sr","Sbedrock"]
+#oldList: (["lc","ndvi","dry_season_length","lat","lon"],axis = 1, inplace = True)
+df = cleanup_data(path, droppedVarsList)
 
 #%% Train rf
 X_test, y_test, regrn, score,  imp = regress(df)  
@@ -396,6 +399,17 @@ ax = plot_corr_feats(df)
 ax = plot_importance(imp)
 ax = plot_importance_by_category(imp)
 ax = plot_importance_plants(imp)
-ax = plot_preds_actual(X_test, y_test, regrn, score)
-plot_pdp(regrn, X_test)
+x = plot_preds_actual(X_test, y_test, regrn, score)
+#lot_pdp(regrn, X_test)
     
+''' now check how this explanatory power compares with species '''
+print('now doing species power calculations')
+# repeat rf and plot importance
+droppedVarsList.remove('species') #so don't drop from list
+df_wFIA = cleanup_data(path, droppedVarsList)
+X_test_wFIA, y_test_wFIA, regrn_wFIA, score_wFIA,  imp_wFIA = regress(df_wFIA) 
+ax = plot_importance(imp_wFIA)
+
+#calculate PWS in points
+#linear regression get one for each of species code so 300x regressio
+
