@@ -25,9 +25,14 @@ import dirs
 sns.set(font_scale = 1, style = "ticks")
 plt.rcParams.update({'font.size': 18})
 
-def cleanup_data(path, droppedVarsList):
+def cleanup_data(path, droppedVarsList, filterList=None):
     """
-    path is where h5 file is stored
+    path : where h5 file is stored
+    droppedVarsList : column names that shouldn't be included in the calculation
+    filterList : column names that should be used to filter which points are used
+    (that is only points with values in filterList are kept), but ultimately also dropped
+    This is useful for apples to apples calculation with or without a point (e.g. in species calculation)
+    NB: Assumes that filterList and droppedVarsList don't overlap'
     """
     
     store = pd.HDFStore(path)
@@ -35,10 +40,16 @@ def cleanup_data(path, droppedVarsList):
     store.close()
     df.drop(droppedVarsList, axis = 1, inplace = True)
     df.dropna(inplace = True)
-    df.reset_index(inplace = True, drop = True)
     
+    #save contents of 
+    if filterList is not None:
+        filteredCols = df[filterList]
+        df.drop(filterList, axis = 1, inplace = True)
+        df.dropna(inplace = True)
+        df[filterList] = filteredCols
+        
+    df.reset_index(inplace = True, drop = True)    
     return df
-
 
 def get_categories_and_colors():
     """
@@ -404,12 +415,41 @@ x = plot_preds_actual(X_test, y_test, regrn, score)
     
 ''' now check how this explanatory power compares with species '''
 print('now doing species power calculations')
-# repeat rf and plot importance
+# repeat rf and plot importance. Note that given many numbers of categoeries, 
+#RF wouldn't be able to pick up species importance here, so this is probably bad example
 droppedVarsList.remove('species') #so don't drop from list
 df_wFIA = cleanup_data(path, droppedVarsList)
 X_test_wFIA, y_test_wFIA, regrn_wFIA, score_wFIA,  imp_wFIA = regress(df_wFIA) 
 ax = plot_importance(imp_wFIA)
 
-#calculate PWS in points
-#linear regression get one for each of species code so 300x regressio
+#calculate RF performance on same points as we have species info for, but not using species
+df_onlyFIALoc = cleanup_data(path, droppedVarsList, filterList='species')
+X_test_onlyFIALoc, y_test_onlyFIALoc, regrn_onlyFIALoc, score_onlyFIALoc,  imp_onlyFIALoc = regress(df_onlyFIALoc) 
+ax = plot_importance(imp_onlyFIALoc)
 
+#instead, for each unique species, calculate a predicted value 
+pwsVec = df_wFIA['pws']
+specVec = df_wFIA['species']
+pwsPred = np.zeros(pwsVec.shape)
+specNumbers = {}
+for specCode in np.unique(df_wFIA['species']):
+    specNumbers[specCode]=np.sum(specVec == specCode)
+    #differentiating (obs_i-X)^2 shows that optimal predictor is mean of each cat
+    thisMean = np.mean( pwsVec[specVec == specCode] )
+    pwsPred[specVec == specCode] = thisMean
+
+resPred = pwsVec - pwsPred
+SSres = np.sum(resPred**2)
+SStot = np.sum( (pwsVec - np.mean(pwsVec))**2 ) #total sum of squares
+coeffDeterm = 1 - SSres/SStot
+
+'''
+summary findings = about 0.15 with categorical prediction vs about 0.45 with RF
+note also that while there are 199 species, there's a ton that barely have any representation
+most common are: spec 65 (n=2256), spec 69 (n=1284), spec 122 (2589), spec202 (1631)
+spec 756 (3151). So the top 7 species adds up to 10911 out of 19551 pixels (56%)
+if add a bit more, we also have spec 58 (405), spec 64 (660), spec 106 (561), spec 108 (753),
+spec 133 (492), spec 746 (486), spec 814 (465)
+top 10 species gets 12885 or 66%
+so toop 14 species gets 14241, or 73%
+so could do 7-way one-hot encoding as additional test and compairson of interations
