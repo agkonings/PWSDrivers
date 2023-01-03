@@ -32,21 +32,28 @@ def cleanup_data(path, droppedVarsList, filterList=None):
     filterList : column names that should be used to filter which points are used
     (that is only points with values in filterList are kept), but ultimately also dropped
     This is useful for apples to apples calculation with or without a point (e.g. in species calculation)
-    NB: Assumes that filterList and droppedVarsList don't overlap'
+    NB: Assumes that filterList and droppedVarsList don't overlap. That is
+    use of filterList is only necessary if the column is also in droppedVarsList
     """
     
     store = pd.HDFStore(path)
     df =  store['df']   # save it
     store.close()
-    df.drop(droppedVarsList, axis = 1, inplace = True)
-    df.dropna(inplace = True)
     
-    #save contents of 
     if filterList is not None:
-        filteredCols = df[filterList]
-        df.drop(filterList, axis = 1, inplace = True)
+        #careful order so that only filterList is source of filter        
+        filteredVals = df[filterList]
+        #first drop other things to make sure don't end up filtering on that
+        df.drop(droppedVarsList, axis = 1, inplace = True)
+        #then add filterList temporarily back in for filtering
+        df[filterList] = filteredVals
+        #filter
         df.dropna(inplace = True)
-        df[filterList] = filteredCols
+        #remove filterList since set-up is don't want to keep it        
+        df.drop(filterList, axis = 1, inplace = True)        
+    else:
+        df.drop(droppedVarsList, axis = 1, inplace = True)
+        df.dropna(inplace = True)
         
     df.reset_index(inplace = True, drop = True)    
     return df
@@ -412,11 +419,13 @@ ax = plot_importance_by_category(imp)
 ax = plot_importance_plants(imp)
 x = plot_preds_actual(X_test, y_test, regrn, score)
 #lot_pdp(regrn, X_test)
-    
-''' now check how this explanatory power compares with species '''
-print('now doing species power calculations')
-# repeat rf and plot importance. Note that given many numbers of categoeries, 
-#RF wouldn't be able to pick up species importance here, so this is probably bad example
+
+print('now doing species power calculations')    
+'''now check how explanatory power compares if don't have species vs. if have 
+6 top species one-hot-encoded
+so want one run wSpec where have one-hot-encoded, don't drop species
+and one run noSpec whre don't have species, but have same filterlist'''
+
 droppedVarsList.remove('species') #so don't drop from list
 df_wFIA = cleanup_data(path, droppedVarsList)
 X_test_wFIA, y_test_wFIA, regrn_wFIA, score_wFIA,  imp_wFIA = regress(df_wFIA) 
@@ -444,7 +453,9 @@ SStot = np.sum( (pwsVec - np.mean(pwsVec))**2 ) #total sum of squares
 coeffDeterm = 1 - SSres/SStot
 
 '''
-summary findings = about 0.15 with categorical prediction vs about 0.45 with RF
+summary findings = scores very similar!! 0.438 vs 0.436 with or without species.
+so doesn't help much. coeffDeterm = 0.14 so species alone can get about 1/3rd of var
+That is, R2 about 0.15 with categorical prediction from species vs about 0.45 with RF
 note also that while there are 199 species, there's a ton that barely have any representation
 most common are: spec 65 (n=2256), spec 69 (n=1284), spec 122 (2589), spec202 (1631)
 spec 756 (3151). So the top 7 species adds up to 10911 out of 19551 pixels (56%)
@@ -452,4 +463,4 @@ if add a bit more, we also have spec 58 (405), spec 64 (660), spec 106 (561), sp
 spec 133 (492), spec 746 (486), spec 814 (465)
 top 10 species gets 12885 or 66%
 so toop 14 species gets 14241, or 73%
-so could do 7-way one-hot encoding as additional test and compairson of interations
+so could do 7-way one-hot encoding as additional test and compairson of interations'''
