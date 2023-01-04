@@ -1,10 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Thu Jun  3 07:44:09 2021
-
-@author: kkrao
-random forest regression of pws
-"""
 import os
 
 import numpy as np
@@ -29,31 +23,14 @@ def cleanup_data(path, droppedVarsList, filterList=None):
     """
     path : where h5 file is stored
     droppedVarsList : column names that shouldn't be included in the calculation
-    filterList : column names that should be used to filter which points are used
-    (that is only points with values in filterList are kept), but ultimately also dropped
-    This is useful for apples to apples calculation with or without a point (e.g. in species calculation)
-    NB: Assumes that filterList and droppedVarsList don't overlap. That is
-    use of filterList is only necessary if the column is also in droppedVarsList
     """
     
     store = pd.HDFStore(path)
     df =  store['df']   # save it
     store.close()
     
-    if filterList is not None:
-        #careful order so that only filterList is source of filter        
-        filteredVals = df[filterList]
-        #first drop other things to make sure don't end up filtering on that
-        df.drop(droppedVarsList, axis = 1, inplace = True)
-        #then add filterList temporarily back in for filtering
-        df[filterList] = filteredVals
-        #filter
-        df.dropna(inplace = True)
-        #remove filterList since set-up is don't want to keep it        
-        df.drop(filterList, axis = 1, inplace = True)        
-    else:
-        df.drop(droppedVarsList, axis = 1, inplace = True)
-        df.dropna(inplace = True)
+    df.drop(droppedVarsList, axis = 1, inplace = True)
+    df.dropna(inplace = True)
         
     df.reset_index(inplace = True, drop = True)    
     return df
@@ -113,6 +90,17 @@ def prettify_names(names):
                  "vanGen_n":"van Genuchten n",
                  "AI":"Aridity Index",
                  "species":"species",
+                 "species_64.0":"Species 64",
+                 "species_65.0":"Species 65",
+                 "species_69.0":"Species 69",
+                 "species_106.0":"Species 106",
+                 "species_108.0":"Species 108",
+                 "species_122.0":"Species 122",
+                 "species_133.0":"Species 133",
+                 "species_202.0":"Species 202",
+                 "species_746.0":"Species 746",
+                 "species_756.0":"Species 756",
+                 "species_814.0":"Species 814"
                  }
     return [new_names[key] for key in names]
     
@@ -418,30 +406,59 @@ ax = plot_importance(imp)
 ax = plot_importance_by_category(imp)
 ax = plot_importance_plants(imp)
 x = plot_preds_actual(X_test, y_test, regrn, score)
-#lot_pdp(regrn, X_test)
 
 print('now doing species power calculations')    
 '''now check how explanatory power compares if don't have species vs. if have 
-6 top species one-hot-encoded
+top 10 species one-hot-encoded
 so want one run wSpec where have one-hot-encoded, don't drop species
 and one run noSpec whre don't have species, but have same filterlist'''
 
+#common species list hand-calculated separately based on most entries in species column
+#shorter list gets about 0.03 better r2 because have more data, so use that as in between point
+#between enough data to do well and not too many columns
+#commonSpecList = {65, 69, 122, 202, 756, 64, 106, 108, 133, 746, 814}
+commonSpecList = {65, 69, 122, 202, 756, 64, 106, 108}
+
+#first calculate with species (one-hot encoded)
+print('with species one-hot encoded') 
 droppedVarsList.remove('species') #so don't drop from list
-df_wFIA = cleanup_data(path, droppedVarsList)
-X_test_wFIA, y_test_wFIA, regrn_wFIA, score_wFIA,  imp_wFIA = regress(df_wFIA) 
-ax = plot_importance(imp_wFIA)
+df_wSpec = cleanup_data(path, droppedVarsList)
+noDataRows = df_wSpec.loc[~df_wSpec.species.isin(commonSpecList)]
+df_wSpec.drop(noDataRows.index, inplace=True)
+df_w1SpecCol = df_wSpec.copy()
+df_wSpec = pd.get_dummies(df_wSpec, columns=['species'])
+X_test_wSpec, y_test_wSpec, regrn_wSpec, score_wSpec,  imp_wSpec = regress(df_wSpec) 
+ax = plot_importance(imp_wSpec)
 
-#calculate RF performance on same points as we have species info for, but not using species
-df_onlyFIALoc = cleanup_data(path, droppedVarsList, filterList='species')
-X_test_onlyFIALoc, y_test_onlyFIALoc, regrn_onlyFIALoc, score_onlyFIALoc,  imp_onlyFIALoc = regress(df_onlyFIALoc) 
-ax = plot_importance(imp_onlyFIALoc)
+#calculate RF performance on same points, but without species info
+print('without species info') 
+df_noSpec = df_w1SpecCol.drop('species', axis=1, inplace=False)
+X_test_noSpec, y_test_noSpec, regrn_noSpec, score_noSpec,  imp_noSpec = regress(df_noSpec) 
+ax = plot_importance(imp_noSpec)
 
-#instead, for each unique species, calculate a predicted value 
-pwsVec = df_wFIA['pws']
-specVec = df_wFIA['species']
+#instead, for each unique species, calculate a predicted value
+'''print('predictive ability with all species') 
+pwsVec = df_w1SpecCol['pws']
+specVec = df_w1SpecCol['species']
 pwsPred = np.zeros(pwsVec.shape)
 specNumbers = {}
-for specCode in np.unique(df_wFIA['species']):
+for specCode in np.unique(df_wSpec['species']):
+    specNumbers[specCode]=np.sum(specVec == specCode)
+    #differentiating (obs_i-X)^2 shows that optimal predictor is mean of each cat
+    thisMean = np.mean( pwsVec[specVec == specCode] )
+    pwsPred[specVec == specCode] = thisMean
+
+resPred = pwsVec - pwsPred
+SSres = np.sum(resPred**2)
+SStot = np.sum( (pwsVec - np.mean(pwsVec))**2 ) #total sum of squares
+coeffDeterm = 1 - SSres/SStot'''
+
+print('predictive ability with top species') 
+pwsVec = df_w1SpecCol['pws']
+specVec = df_w1SpecCol['species']
+pwsPred = np.zeros(pwsVec.shape)
+specNumbers = {}
+for specCode in np.unique(df_w1SpecCol['species']):
     specNumbers[specCode]=np.sum(specVec == specCode)
     #differentiating (obs_i-X)^2 shows that optimal predictor is mean of each cat
     thisMean = np.mean( pwsVec[specVec == specCode] )
@@ -452,15 +469,19 @@ SSres = np.sum(resPred**2)
 SStot = np.sum( (pwsVec - np.mean(pwsVec))**2 ) #total sum of squares
 coeffDeterm = 1 - SSres/SStot
 
-'''
+print('amount explained with ONLY species info ' + str(coeffDeterm))
+print('fraction explained by species' + str(coeffDeterm/score_wSpec))
+
+'''NBcoeffDeterm was about 0.15 with all species, now 0.12 with top species'
+
 summary findings = scores very similar!! 0.438 vs 0.436 with or without species.
 so doesn't help much. coeffDeterm = 0.14 so species alone can get about 1/3rd of var
-That is, R2 about 0.15 with categorical prediction from species vs about 0.45 with RF
+That is, R2 about 0.12 with categorical prediction from species vs about 0.45 with RF
 note also that while there are 199 species, there's a ton that barely have any representation
 most common are: spec 65 (n=2256), spec 69 (n=1284), spec 122 (2589), spec202 (1631)
-spec 756 (3151). So the top 7 species adds up to 10911 out of 19551 pixels (56%)
+spec 756 (3151). So the top 5 species adds up to 10911 out of 19551 pixels (56%)
 if add a bit more, we also have spec 58 (405), spec 64 (660), spec 106 (561), spec 108 (753),
 spec 133 (492), spec 746 (486), spec 814 (465)
-top 10 species gets 12885 or 66%
-so toop 14 species gets 14241, or 73%
+top 8 species gets 12885 or 66%
+so toop 11 species gets 14241, or 73%
 so could do 7-way one-hot encoding as additional test and compairson of interations'''
