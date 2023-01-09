@@ -382,78 +382,70 @@ def plot_pdp(regr, X_test):
     
     
     
-#main code
-#%% Load data
-path = os.path.join(dirs.dir_data, 'store_plant_soil_topo_climate_PWSthrough2021v3.h5')
-df = cleanup_data(path)
+def main():
+    plt.rcParams.update({'font.size': 18})
 
-#%% Train rf
-#start 1:46PM
-print('running')
-start0 = time.time()
-X_test, y_test, regrn, score,  imp = regress(df)  
-end0 = time.time()
-print("Time for 91 runs: ", end0-start0)
-X_all = df.drop("pws",axis = 1) #get full list of points to calculate shapley on
-print("Starting shapley")
-start = time.time()    
-#X100 = shap.utils.sample(X_test, 100) # 100 instances for use as the background distribution
-explainer = shap.TreeExplainer(regrn)
-end1 = time.time()
-print("Time main step: ", end1-start) #only takes 0.17 seconds with treeexplainer    
-shap_values = explainer.shap_values(X_all)
-end2 = time.time()
-#this is probably longer, but could do tests by only running a supbset of X_test
-#that should scale.#384 for 400
-#indeed, would take about 55 hours of runtime. 
-print("Time both steps: ", end2-start) 
-print("size X_test: ", len(X_test))
-print("size df: ", len(df))
-
-#save to pickle
-filename = 'shapvals.pkl'    
-outfile = open(filename,'wb')
-pickle.dump(shap_values, outfile)
-outfile.close()
-
-#make map. 
-shap_Ks = shap_values[:,2] #2 = 3rd column = Ks. Would be nice to find coding way to do this
-##guide on this: print(list(zip(X_test.columns, range(X_test.shape[1])))) reutrns
-##[('silt,0'),('clay',1),('ks',2), ... etc]
-filename = os.path.join("C:/repos/data/pws_features/PWS_through2021.tif") #load an old PWS file. 
-ds = gdal.Open(filename)
-geotransform = ds.GetGeoTransform()
-pws = np.array(ds.GetRasterBand(1).ReadAsArray())
-
-#get set of lat and lon to test
-path = os.path.join(dirs.dir_data, 'store_plant_soil_topo_climate_PWSthrough2021v3.h5')
-store = pd.HDFStore(path)
-df2 =  store['df']   # save it
-store.close()
-df2.drop(["lc","vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi","hft","sand",'vpd_cv',"ppt_lte_100","thetas","dry_season_length","t_mean","t_std"],axis = 1, inplace = True)
-df2.dropna(inplace = True)
-df2.reset_index(inplace = True, drop = True)
+    #%% Load data
+    path = os.path.join(dirs.dir_data, 'store_plant_soil_topo_climate_PWSthrough2021v3.h5')
+    df = cleanup_data(path)
     
-#assign to spatial map
-shapMap = np.empty( np.shape(pws) ) * np.nan
-latInd = np.round( ( df2['lat'].to_numpy() - geotransform[3])/geotransform[5] ).astype(int)
-lonInd = np.round( ( df2['lon'].to_numpy() - geotransform[0])/geotransform[1] ).astype(int)
-shapMap[latInd, lonInd] = shap_Ks 
-fig, ax1 = plt.subplots()
-im = ax1.imshow(shapMap, interpolation='none')
-plt.title('Ks shap values')
-plt.savefig("KsShapmap.png")
-#add state borders
+    #%% Train rf
+    start0 = time.time()
+    X_test, y_test, regrn, score,  imp = regress(df)  
+    end0 = time.time()
+    print("Time for 91 runs: ", end0-start0)
+    print("Starting shapley")
+    start = time.time()    
+    #X100 = shap.utils.sample(X_test, 100) # 100 instances for use as the background distribution
+    explainer = shap.TreeExplainer(regrn)
+    end1 = time.time()
+    print("Time main step: ", end1-start) #only takes 0.17 seconds with treeexplainer    
+    shap_values = explainer.shap_values(X_test[1:400])
+    end2 = time.time()
+    #this is probably longer, but could do tests by only running a supbset of X_test
+    #that should scale.#384 for 400
+    #indeed, would take about 55 hours of runtime. 
+    print("Time both steps: ", end2-start) 
+    print("size X_test: ", len(X_test))
+    
+    #save to pickle
+    filename = 'shapvals.pkl'    
+    outfile = open(filename,'wb')
+    pickle.dump(shap_values, outfile)
+    pickle.dump(explainer, outfile) 
+    #pickle.dump(X100, outfile)
+    outfile.close()
+    
+    #make map. NEEDS TO BE DEBUGGED
+    shap_Ks = shap_values[:,'ks']
+    filename = os.path.join("C:/repos/data/pws_features/PWS_through2021.tif") #load an old PWS file. 
+    ds = gdal.Open(filename)
+    geotransform = ds.GetGeoTransform()
+    pws = np.array(ds.GetRasterBand(1).ReadAsArray())
+    
+    errorMap = np.empty( np.shape(pws) ) * np.nan
+    
+    store = pd.HDFStore(path)
+    df2 =  store['df']   # save it
+    store.close()
+    df2.dropna(inplace = True)
+    
+    latInd = np.round( (df2['lat'].to_numpy() - geotransform[3])/geotransform[5] ).astype(int)
+    lonInd = np.round( (df2['lon'].to_numpy() - geotransform[0])/geotransform[1] ).astype(int)
+    shapMap[latInd, lonInd] = shap_Ks 
+    
+    
+    #%% make plots
+    ax = plot_corr_feats(df)
+    #still a bug somewhere in plot_error_pattern, ignroe for now
+    #ax = plot_error_pattern(path, df)
+    ax = plot_importance(imp)
+    ax = plot_importance_by_category(imp)
+    ax = plot_importance_plants(imp)
+    ax = plot_preds_actual(X_test, y_test, regrn, score)
+    plot_pdp(regrn, X_test)
+    
 
+if __name__ == "__main__":
+    main()
 
-'''
-#%% make plots
-ax = plot_corr_feats(df)
-#still a bug somewhere in plot_error_pattern, ignroe for now
-#ax = plot_error_pattern(path, df)
-ax = plot_importance(imp)
-ax = plot_importance_by_category(imp)
-ax = plot_importance_plants(imp)
-ax = plot_preds_actual(X_test, y_test, regrn, score)
-plot_pdp(regrn, X_test)
-'''    
