@@ -416,24 +416,6 @@ def main():
     #pickle.dump(X100, outfile)
     outfile.close()
     
-    #make map. NEEDS TO BE DEBUGGED
-    shap_Ks = shap_values[:,'ks']
-    filename = os.path.join("C:/repos/data/pws_features/PWS_through2021.tif") #load an old PWS file. 
-    ds = gdal.Open(filename)
-    geotransform = ds.GetGeoTransform()
-    pws = np.array(ds.GetRasterBand(1).ReadAsArray())
-    
-    errorMap = np.empty( np.shape(pws) ) * np.nan
-    
-    store = pd.HDFStore(path)
-    df2 =  store['df']   # save it
-    store.close()
-    df2.dropna(inplace = True)
-    
-    latInd = np.round( (df2['lat'].to_numpy() - geotransform[3])/geotransform[5] ).astype(int)
-    lonInd = np.round( (df2['lon'].to_numpy() - geotransform[0])/geotransform[1] ).astype(int)
-    shapMap[latInd, lonInd] = shap_Ks 
-    
     
     #%% make plots
     ax = plot_corr_feats(df)

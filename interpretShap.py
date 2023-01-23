@@ -19,6 +19,10 @@ import matplotlib.patches
 import sklearn.inspection
 from sklearn.inspection import permutation_importance
 import sklearn.metrics
+import geopandas as gpd
+import rioxarray as rxr
+import rasterio
+from rasterio.plot import plotting_extent, show
 import shap
 import time
 import pickle
@@ -35,14 +39,17 @@ def cleanup_data(path):
     
     store = pd.HDFStore(path)
     df =  store['df']   # save it
-    store.close()
+    store.close()  
     #df.drop(["lc","isohydricity",'root_depth', 'hft', 'p50', 'c', 'g1',"dry_season_length","lat","lon"],axis = 1, inplace = True)
-    df.drop(["lc","vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi","hft","sand",'vpd_cv',"ppt_lte_100","thetas","dry_season_length","t_mean","t_std","lat","lon"],axis = 1, inplace = True)
+    df.drop(["lc","vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi","hft","sand",'vpd_cv',"ppt_lte_100","thetas","dry_season_length","t_mean","t_std"],axis = 1, inplace = True)
     #df.drop(["lc","ndvi","dry_season_length","lat","lon"],axis = 1, inplace = True)
     df.dropna(inplace = True)
+    lat = df["lat"]
+    lon = df["lon"]
+    df.drop(["lat", "lon"], axis=1, inplace=True)
     df.reset_index(inplace = True, drop = True)
     
-    return df
+    return df, lat, lon
 
 
 def get_categories_and_colors():
@@ -63,6 +70,18 @@ def get_categories_and_colors():
     traits = ['isohydricity', 'root_depth', 'hft', 'p50', 'gpmax', 'c', 'g1']
     
     return green, brown, blue, yellow, purple, plant, soil, climate, topo, traits
+    
+def get_shap_categories():
+    """
+    categorize for tractability
+    """
+    
+    plantShaps = ['shap_canopy_height', 'shap_pft', 'shap_agb']
+    soilShaps = ['shap_silt', 'shap_clay', 'shap_ks', 'shap_vanGen_n']
+    topoShaps = ['shap_elevation', 'shap_twi', 'shap_dist_to_water']
+    traitsShaps = ['shap_isohydricity', 'shap_root_depth', 'shap_p50', 'shap_gpmax', 'shap_c', 'shap_g1']
+    
+    return plantShaps, soilShaps, topoShaps, traitsShaps
 
 def prettify_names(names):
     new_names = {"ks":"K$_{s,max}$",
@@ -83,11 +102,11 @@ def prettify_names(names):
                  "root_depth":"Root depth",
                  "hft":"Hydraulic\nfunctional type",
                  "p50":"$\psi_{50}$",
-                 "gpmax":"Max. xylem\nconductance",
-                 "c":"Xylem\ncapacitance",
+                 "gpmax":"K_{xylem,max}",
+                 "c": "capacitance",
                  "g1":"g$_1$",
                  "n":"$n$",
-                 "pft":"Plant Functional Type",
+                 "pft":"PFT",
                  "aspect":"Aspect",
                  "slope":"Slope",
                  "twi":"TWI",
@@ -100,8 +119,6 @@ def prettify_names(names):
                  "vanGen_n":"van Genuchten n"
                  }
     return [new_names[key] for key in names]
-    
-    
     
     
     
@@ -220,55 +237,6 @@ def plot_preds_actual(X_test, y_test, regrn, score):
     ax.annotate(f"R$^2$={score:0.2f}", (0.1,0.9),xycoords = "axes fraction", ha = "left")
     return ax
 
-def plot_error_pattern(path, df):
-    """
-    Make map of prediction error to visually test if there is a spatial pattern
-    Also plot other inputs for comparison
-
-    Parameters
-    ----------
-    path: location where H5 file with PWS and all input features is stored
-    df: dataframe with features
-
-    Returns
-    -------
-    ax: axis handle
-
-    """
-#    # Load data
-#    path = os.path.join(dirs.dir_data, 'store_plant_soil_topo_climate_PWSthrough2021v2.h5')
-#    df = cleanup_data(path)
-    
-    #make map_predictionError function later
-    X_test, y_test, regrn, score,  imp = regress(df)
-    
-    XAll = df.drop("pws",axis = 1)
-    y_hat = regrn.predict(XAll)
-    predError = y_hat - df['pws']
-    
-    filename = os.path.join("C:/repos/data/pws_features/PWS_through2021.tif") #load an old PWS file. 
-    ds = gdal.Open(filename)
-    geotransform = ds.GetGeoTransform()
-    pws = np.array(ds.GetRasterBand(1).ReadAsArray())
-    
-    errorMap = np.empty( np.shape(pws) ) * np.nan
-    
-    store = pd.HDFStore(path)
-    df2 =  store['df']   # save it
-    store.close()
-    df2.dropna(inplace = True)
-    
-    latInd = np.round( (df2['lat'].to_numpy() - geotransform[3])/geotransform[5] ).astype(int)
-    lonInd = np.round( (df2['lon'].to_numpy() - geotransform[0])/geotransform[1] ).astype(int)
-    errorMap[latInd, lonInd] = predError
-    
-    
-    fig, ax1 = plt.subplots()
-    im = ax1.imshow(errorMap, interpolation='none', 
-                   vmin=1, vmax=1.5)
-    plt.title('prediction error')
-    cbar = plt.colorbar(im)
-
 def plot_importance(imp):
     """
     plot feature importance for all features
@@ -379,13 +347,48 @@ def plot_pdp(regr, X_test):
         plt.xticks(fontsize = 16)
         plt.yticks(fontsize = 16)
         plt.show()
+        
+def df_to_raster(dfColumn, rasterShape, lat, lon, geotransform):
+    '''
+    Take a dataframe and corresponding lat and lon values of same size and turn into raster
+    '''
+
+    valMap = np.empty( rasterShape ) * np.nan    
+    latInd = np.round( (lat.to_numpy() - geotransform[3])/geotransform[5] ).astype(int)
+    lonInd = np.round( (lon.to_numpy() - geotransform[0])/geotransform[1] ).astype(int)
+    valMap[latInd, lonInd] = dfColumn
+
+    return valMap 
+
+def plot_map(arrayToPlot, pwsRaster, stateBorders, title, vmin = None, vmax = None, savePath = None):
+    '''make map with state borders'''
     
+    #preliminary calculatios
+    statesList = ['Washington','Oregon','California','Texas','Nevada','Idaho','Montana','Wyoming',
+              'Arizona','New Mexico','Colorado','Utah']
+    pwsExtent = plotting_extent(pwsRaster, pwsRaster.rio.transform())
+    
+    #actual plotting
+    fig, ax = plt.subplots()
+    if vmin != None and vmax != None:
+        ax = rasterio.plot.show(arrayToPlot, vmin=vmin, vmax=vmax, extent=pwsExtent, ax=ax, cmap='YlOrRd')
+    else:
+        ax = rasterio.plot.show(arrayToPlot, extent=pwsExtent, ax=ax, cmap='YlOrRd')
+    stateBorders[stateBorders['NAME'].isin(statesList)].boundary.plot(ax=ax, edgecolor='black', linewidth=0.5) 
+    im = ax.get_images()[0]
+    plt.colorbar(im, ax=ax)
+    plt.title(title)
+    plt.xticks([])
+    plt.yticks([])
+    plt.show()    
+    if savePath != None:
+        plt.savefig(savePath)
     
     
 #main code
 #%% Load data
 path = os.path.join(dirs.dir_data, 'store_plant_soil_topo_climate_PWSthrough2021v3.h5')
-df = cleanup_data(path)
+df, lat, lon = cleanup_data(path)
 df_nopws = df.drop('pws', axis=1)
 
 #%% Train rf
@@ -401,43 +404,55 @@ outfile.close()
 shapNames = 'shap_'+ df_nopws.keys()
 shapdf = pd.DataFrame(shapValues, columns=shapNames)
 
-
 #calculate cross-correlation
 corrMat = pd.concat([df_nopws, shapdf], axis=1, keys=['df1', 'df2']).corr().loc['df2', 'df1']
 r2bcmap = sns.color_palette("vlag", as_cmap=True)
 sns.heatmap(corrMat, 
-        xticklabels=df_nopws.columns.values,
-        yticklabels=shapdf.columns.values,
+        xticklabels=prettify_names(df_nopws.columns.values),
+        yticklabels=['Shap: ' + s for s in prettify_names(df_nopws.keys())], #'shapdf.columns.values',
         cmap = r2bcmap, vmin=-0.4, vmax=0.4)
+plt.savefig('../figures/crossCorrelations.png')
 
-#make map 
-shap_Ks = shap_values[:,2] #2 = 3rd column = Ks. Would be nice to find coding way to do this
-##guide on this: print(list(zip(X_test.columns, range(X_test.shape[1])))) reutrns
-##[('silt,0'),('clay',1),('ks',2), ... etc]
-filename = os.path.join("C:/repos/data/pws_features/PWS_through2021.tif") #load an old PWS file. 
-ds = gdal.Open(filename)
+#make a map with state borders
+tiffpath = os.path.join("C:/repos/data/pws_features/PWS_through2021.tif") #load an old PWS file. 
+statesList = ['Washington','Oregon','California','Texas','Nevada','Idaho','Montana','Wyoming',
+              'Arizona','New Mexico','Colorado','Utah']
+pwsRaster = rxr.open_rasterio(tiffpath, masked=True).squeeze()
+pwsExtent = plotting_extent(pwsRaster, pwsRaster.rio.transform())
+#put shap in array
+ds = gdal.Open(tiffpath)
 geotransform = ds.GetGeoTransform()
-pws = np.array(ds.GetRasterBand(1).ReadAsArray())
+shapMap = df_to_raster(shapdf['shap_ks'], np.shape(pwsRaster), lat, lon, geotransform)    
+statesPath = "C:/repos/data/cb_2018_us_state_5m/cb_2018_us_state_5m.shp"
+states = gpd.read_file(statesPath)
+plot_map(shapMap, pwsRaster, states, 'shap_ks')
 
-#get set of lat and lon of the Western US
-path = os.path.join(dirs.dir_data, 'store_plant_soil_topo_climate_PWSthrough2021v3.h5')
-store = pd.HDFStore(path)
-df2 =  store['df']   # save it
-store.close()
-#filter on Western US
-df2.drop(["lc","vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi","hft","sand",'vpd_cv',"ppt_lte_100","thetas","dry_season_length","t_mean","t_std"],axis = 1, inplace = True)
-df2.dropna(inplace = True)
-df2.reset_index(inplace = True, drop = True)
-    
-#assign to spatial map
-shapMap = np.empty( np.shape(pws) ) * np.nan
-latInd = np.round( ( df2['lat'].to_numpy() - geotransform[3])/geotransform[5] ).astype(int)
-lonInd = np.round( ( df2['lon'].to_numpy() - geotransform[0])/geotransform[1] ).astype(int)
-shapMap[latInd, lonInd] = shap_Ks 
-fig, ax1 = plt.subplots()
-im = ax1.imshow(shapMap, interpolation='none')
-plt.title('Ks shap values')
-plt.savefig("KsShapmap.png")
-#add state borders
+#for each shap column, assign a category
+plantShaps, soilShaps, topoShaps, traitsShaps = get_shap_categories()
+#for each type, take the sum of values
+dfPlant = shapdf[plantShaps]
+groupShapPlant = np.sum(np.abs(shapdf[plantShaps]), axis=1)
+groupShapSoil = np.sum(np.abs(shapdf[soilShaps]), axis=1)
+groupShapTopo = np.sum(np.abs(shapdf[topoShaps]), axis=1)
+groupShapTraits = np.sum(np.abs(shapdf[traitsShaps]), axis=1)
 
+#plot in a subplot file, each with same colorbars
+plantMap = df_to_raster(groupShapPlant, np.shape(pwsRaster), lat, lon, geotransform)
+plot_map(plantMap, pwsRaster, states, 'sum of veg density Shapley values', vmin=0, vmax=0.6, savePath='../figures/plantTotShap.png')
+soilMap = df_to_raster(groupShapSoil, np.shape(pwsRaster), lat, lon, geotransform)
+plot_map(soilMap, pwsRaster, states, 'sum of soil Shapley values', vmin=0, vmax=0.6, savePath='../figures/soilTotShap.png')
+topoMap = df_to_raster(groupShapTopo, np.shape(pwsRaster), lat, lon, geotransform)
+plot_map(topoMap, pwsRaster, states, 'sum of topo Shapley values', vmin=0, vmax=0.6, savePath='../figures/topoTotShap.png')
+traitsMap = df_to_raster(groupShapTraits, np.shape(pwsRaster), lat, lon, geotransform)
+plot_map(traitsMap, pwsRaster, states, 'sum of trait Shapley values', vmin=0, vmax=0.6, savePath='../figures/traitsTotShap.png')
 
+#map all individual features
+for feat in df_nopws.columns:
+    figFile = '../figures/' + feat + '.png'
+    featMap = df_to_raster(df_nopws[feat], np.shape(pwsRaster), lat, lon, geotransform)
+    plot_map(featMap, pwsRaster, states, prettify_names([feat])[0], savePath = figFile)
+
+'''to add: 
+    adjust vmin, vmax on feat maps
+ PFT colormap. pft has values 41, 42, 43, 52, 71, 81
+ '''
