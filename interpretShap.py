@@ -99,7 +99,7 @@ def prettify_names(names):
                  "silt":"Silt %",
                  "canopy_height": "Canopy height",
                  "isohydricity":"Isohydricity",
-                 "root_depth":"Root depth",
+                 "root_depth":"Rooting depth",
                  "hft":"Hydraulic\nfunctional type",
                  "p50":"$\psi_{50}$",
                  "gpmax":"K_{xylem,max}",
@@ -380,9 +380,9 @@ def plot_map(arrayToPlot, pwsRaster, stateBorders, title, vmin = None, vmax = No
     plt.title(title)
     plt.xticks([])
     plt.yticks([])
-    plt.show()    
     if savePath != None:
         plt.savefig(savePath)
+    plt.show()   
     
     
 #main code
