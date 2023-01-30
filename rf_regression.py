@@ -391,7 +391,7 @@ plt.rcParams.update({'font.size': 18})
 #%% Load data
 path = os.path.join(dirs.dir_data, 'store_plant_soil_topo_climate_PWSvAlex.h5')
 #oldList: ["lc","isohydricity",'root_depth', 'hft', 'p50', 'c', 'g1',"dry_season_length","lat","lon"],axis = 1, inplace = True)
-droppedVarsList = ["species","vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi",'vpd_cv',"ppt_lte_100","thetas","dry_season_length","t_mean","t_std","lat","lon","Sr","Sbedrock"]
+droppedVarsList = ["species","AI","vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi",'vpd_cv',"ppt_lte_100","thetas","dry_season_length","t_mean","t_std","lat","lon","Sr","Sbedrock"]
 #oldList: (["lc","ndvi","dry_season_length","lat","lon"],axis = 1, inplace = True)
 df = cleanup_data(path, droppedVarsList)
 
