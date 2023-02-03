@@ -130,60 +130,60 @@ def create_h5(store_path):
     #shape. Note that land cover file has problems. Just don't load for now
     #check_regridding(gtPWS, data['pws'].shape)    
     
-    keys = ['pws','silt','clay','ks','thetas','vanGen_n','isohydricity',\
+    keys = ['silt','clay','ks','thetas','vanGen_n','isohydricity',\
         'root_depth','canopy_height','p50','gpmax', 'c','g1','nlcd',
         "elevation","aspect","slope","twi","dry_season_length","ndvi",\
             "vpd_mean","vpd_cv", "dist_to_water","agb","ppt_mean","ppt_cv",\
         "t_mean","t_std","ppt_lte_100", "AI","Sr","Sbedrock", "species", "lon","lat"]
     
     array = np.zeros((len(keys), data['pws'].shape[0],data['pws'].shape[1])).astype('float')
-    array[0] = data['pws']
+    #array[0] = data['pws']
     
     
     #add data one by one
-    array[1] = get_value( os.path.join(regridDir, 'Unified_NA_Soil_Map_Subsoil_Silt_Fraction.tif'), 1)
-    array[2] = get_value( os.path.join(regridDir, 'Unified_NA_Soil_Map_Subsoil_Clay_Fraction.tif'), 1)
-    array[3] = get_value( os.path.join(regridDir, 'Ks_30cm.tif'), 1)
-    array[4] = get_value( os.path.join(regridDir, 'thetas_30cm.tif'), 1)
-    array[5] = get_value( os.path.join(regridDir, 'vanGen_n_30cm.tif'), 1)    
-    array[6] = get_value( os.path.join(regridDir, 'isohydricity.tif'), 1)
-    array[7] = get_value( os.path.join(regridDir, 'root_depth.tif'), 1)
-    array[8] = get_value( os.path.join(regridDir, 'canopy_height.tif'), 1)
-    array[9] = get_value( os.path.join(regridDir, 'P50_liu.tif'), 1)
-    array[10] = get_value( os.path.join(regridDir, 'gpmax_50.tif'), 1)
-    array[11] = get_value( os.path.join(regridDir, 'C_50.tif'), 1)
-    array[12] = get_value( os.path.join(regridDir, 'g1_50.tif'), 1)
-    array[13] = get_value( os.path.join(regridDir, 'nlcd_2016_4km.tif'), 1)    
-    array[14] = get_value( os.path.join(regridDir, 'usa_dem.tif'), 1)    
-    array[15] = get_value( os.path.join(regridDir, 'usa_aspect_wgs1984_clip.tif'), 1)    
-    array[16] = get_value( os.path.join(regridDir, 'usa_slope_project.tif'), 1)    
-    array[17] = get_value( os.path.join(regridDir, 'twi.tif'), 1)    
-    array[18] = get_value( os.path.join(regridDir, 'fireSeasonLength.tif'), 1)    
-    array[19] = get_value( os.path.join(regridDir, 'ndvi_mean.tif'), 1)    
-    array[20] = get_value( os.path.join(regridDir, 'vpd_mean.tif'), 1)    
+    array[0] = get_value( os.path.join(regridDir, 'Unified_NA_Soil_Map_Subsoil_Silt_Fraction.tif'), 1)
+    array[1] = get_value( os.path.join(regridDir, 'Unified_NA_Soil_Map_Subsoil_Clay_Fraction.tif'), 1)
+    array[2] = get_value( os.path.join(regridDir, 'Ks_30cm.tif'), 1)
+    array[3] = get_value( os.path.join(regridDir, 'thetas_30cm.tif'), 1)
+    array[4] = get_value( os.path.join(regridDir, 'vanGen_n_30cm.tif'), 1)    
+    array[5] = get_value( os.path.join(regridDir, 'isohydricity.tif'), 1)
+    array[6] = get_value( os.path.join(regridDir, 'root_depth.tif'), 1)
+    array[7] = get_value( os.path.join(regridDir, 'canopy_height.tif'), 1)
+    array[8] = get_value( os.path.join(regridDir, 'P50_liu.tif'), 1)
+    array[9] = get_value( os.path.join(regridDir, 'gpmax_50.tif'), 1)
+    array[10] = get_value( os.path.join(regridDir, 'C_50.tif'), 1)
+    array[11] = get_value( os.path.join(regridDir, 'g1_50.tif'), 1)
+    array[12] = get_value( os.path.join(regridDir, 'nlcd_2016_4km.tif'), 1)    
+    array[13] = get_value( os.path.join(regridDir, 'usa_dem.tif'), 1)    
+    array[14] = get_value( os.path.join(regridDir, 'usa_aspect_wgs1984_clip.tif'), 1)    
+    array[15] = get_value( os.path.join(regridDir, 'usa_slope_project.tif'), 1)    
+    array[16] = get_value( os.path.join(regridDir, 'twi.tif'), 1)    
+    array[17] = get_value( os.path.join(regridDir, 'fireSeasonLength.tif'), 1)    
+    array[18] = get_value( os.path.join(regridDir, 'ndvi_mean.tif'), 1)    
+    array[19] = get_value( os.path.join(regridDir, 'vpd_mean.tif'), 1)    
     vpdStd = get_value( os.path.join(regridDir, 'vpdStd.tif'), 1)        
-    array[21] = vpdStd/array[19]
-    array[22] = get_value( os.path.join(regridDir, 'distance_to_water_bodies.tif'), 1)    
-    array[23] = get_value( os.path.join(regridDir, 'agb_2020.tif'), 1)    
-    array[24] = get_value( os.path.join(regridDir, 'pptMean.tif'), 1)    
+    array[20] = vpdStd/array[19]
+    array[21] = get_value( os.path.join(regridDir, 'distance_to_water_bodies.tif'), 1)    
+    array[22] = get_value( os.path.join(regridDir, 'agb_2020.tif'), 1)    
+    array[23] = get_value( os.path.join(regridDir, 'pptMean.tif'), 1)    
     pptStd = get_value( os.path.join(regridDir, 'pptStd.tif'), 1)
-    array[25] = pptStd/array[23]  
+    array[24] = pptStd/array[23]  
     #note different bands due to bug in file creation
-    array[26] = get_value( os.path.join(regridDir, 'tMean.tif'), 2)    
-    array[27] = get_value( os.path.join(regridDir, 'tStd.tif'), 2)    
-    array[28] = get_value( os.path.join(regridDir, 'ppt_lte_100.tif'), 1)    
-    array[29] = get_value( os.path.join(regridDir, 'aridity_index.tif'), 1)
-    array[30] = get_value( os.path.join(regridDir, 'Sr.tif'), 1)    
-    array[31] = get_value( os.path.join(regridDir, 'Sbedrock.tif'), 1)        
-    array[32] = get_value( 'C:/repos/data/FIADomSpecies.tif', 1)        
-    array[33] = lons
-    array[34] = lats  
+    array[25] = get_value( os.path.join(regridDir, 'tMean.tif'), 2)    
+    array[26] = get_value( os.path.join(regridDir, 'tStd.tif'), 2)    
+    array[27] = get_value( os.path.join(regridDir, 'ppt_lte_100.tif'), 1)    
+    array[28] = get_value( os.path.join(regridDir, 'aridity_index.tif'), 1)
+    array[29] = get_value( os.path.join(regridDir, 'Sr.tif'), 1)    
+    array[30] = get_value( os.path.join(regridDir, 'Sbedrock.tif'), 1)        
+    array[31] = get_value( 'C:/repos/data/FIADomSpecies.tif', 1)        
+    array[32] = lons
+    array[33] = lats  
     
     
     ds = None
     
     df = create_df(array,keys)
-    df.dropna(subset = ["pws"], inplace = True)
+    #df.dropna(subset = ["pws"], inplace = True)
     
     df.describe()
     df.loc[df['silt']<-1] = np.nan
@@ -205,7 +205,7 @@ def create_h5(store_path):
     pws = np.array(ds.GetRasterBand(1).ReadAsArray())
     #plot map
     df2 = df.copy()
-    droppedFeats = ["pws", 'silt', 'clay', 'ks', 'thetas', 'nlcd', 
+    droppedFeats = ['silt', 'clay', 'ks', 'thetas', 'nlcd', 
                    'elevation', 'slope', 'aspect', 'twi']
     df2.dropna(subset = droppedFeats, inplace = True)
     latMap = np.empty( np.shape(pws) ) * np.nan
@@ -280,16 +280,16 @@ def plot_heatmap(df):
 
 def main():
     #%% make and save dataframe:
-    store_path = os.path.join(dirs.dir_data, 'store_plant_soil_topo_climate_PWSvAlex.h5')
+    store_path = os.path.join(dirs.dir_data, 'inputFeatures.h5')
     create_h5(store_path)
     
-    #%% Load h5
+    #%% Load h5 as type
     # make sure dirs.dir_data in dirs.py points to location of store_plant_soil_topo_climate.h5
     # This is typically location of repo/data
     store = pd.HDFStore(store_path)
     df =  store['df']
     store.close()
-    df.columns = df.columns.astype(str)    
+    df.columns = df.coumns.astype(str)    
     
     #%% Plot heatmap
     plot_heatmap(df)

@@ -19,15 +19,33 @@ import dirs
 sns.set(font_scale = 1, style = "ticks")
 plt.rcParams.update({'font.size': 18})
 
-def cleanup_data(path, droppedVarsList, filterList=None):
+def add_pws(df, pwsPath):
+    '''
+    add pws to data frame from a particular path
+    Here, we assume that the lats, lons, and other variables in the dataframe
+    have the same original 2-D shape as the PWS array, and that each 1-D version
+    in the dataframe is created by .flatten(). For more info on how this is
+    done in inputFeats dataframes, see make_data.py
+    '''
+    
+    dspws = gdal.Open(os.path.join(dirs.dir_data, "pws_features","PWS_through2021.tif"))
+    gtpws= dspws.GetGeoTransform()
+    arraypws = np.array(dspws.GetRasterBand(1).ReadAsArray())
+    
+    df['pws'] = arraypws.flatten()
+    
+    #re-arrange columns so pws goes first
+    cols = df.columns.tolist()
+    cols = cols[-1:] + cols[:-1]
+    df = df[cols]
+    
+    return df
+
+def cleanup_data(df, droppedVarsList, filterList=None):
     """
     path : where h5 file is stored
     droppedVarsList : column names that shouldn't be included in the calculation
     """
-    
-    store = pd.HDFStore(path)
-    df =  store['df']   # save it
-    store.close()
     
     df.drop(droppedVarsList, axis = 1, inplace = True)
     df.dropna(inplace = True)
@@ -85,8 +103,7 @@ def prettify_names(names):
                  "dist_to_water":"Dist to water",
                  "t_mean":"Temp$_{mean}$",
                  "t_std":"Temp$_{st dev}$",
-                 "lon":"Lon",
-                 "lat":"Lat",
+                 "lon":"Lon", "lat":"Lat",
                  "vanGen_n":"van Genuchten n",
                  "AI":"Aridity Index",
                  "species":"species",
@@ -103,9 +120,6 @@ def prettify_names(names):
                  "species_814.0":"Species 814"
                  }
     return [new_names[key] for key in names]
-    
-    
-    
     
     
 def regress(df):
@@ -389,11 +403,20 @@ plt.rcParams.update({'font.size': 18})
 
 
 #%% Load data
-path = os.path.join(dirs.dir_data, 'store_plant_soil_topo_climate_PWSvAlex.h5')
+path = os.path.join(dirs.dir_data, 'inputFeatures.h5')
+store = pd.HDFStore(path)
+df =  store['df']   # save it
+store.close()
+
+#add particular PWS file
+pwsPath = os.path.join(dirs.dir_data, "pws_features","PWS_through2021.tif") 
+df = add_pws(df, pwsPath)
+
 #oldList: ["lc","isohydricity",'root_depth', 'hft', 'p50', 'c', 'g1',"dry_season_length","lat","lon"],axis = 1, inplace = True)
 droppedVarsList = ["species","AI","vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi",'vpd_cv',"ppt_lte_100","thetas","dry_season_length","t_mean","t_std","lat","lon","Sr","Sbedrock"]
 #oldList: (["lc","ndvi","dry_season_length","lat","lon"],axis = 1, inplace = True)
-df = cleanup_data(path, droppedVarsList)
+df = cleanup_data(df, droppedVarsList)
+error
 
 #%% Train rf
 X_test, y_test, regrn, score,  imp = regress(df)  
