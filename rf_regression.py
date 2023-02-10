@@ -19,6 +19,7 @@ import dirs
 sns.set(font_scale = 1, style = "ticks")
 plt.rcParams.update({'font.size': 18})
 
+
 def add_pws(df, pwsPath):
     '''
     add pws to data frame from a particular path
@@ -39,6 +40,20 @@ def add_pws(df, pwsPath):
     cols = cols[-1:] + cols[:-1]
     df = df[cols]
     
+    return df
+
+def load_data(dfPath, pwsPath):
+    '''
+    create a joint dataframe with the input features + the pws 
+    '''    
+
+    store = pd.HDFStore(dfPath)
+    df =  store['df']   # save it
+    store.close()
+
+    #add particular PWS file
+    df = add_pws(df, pwsPath)
+
     return df
 
 def cleanup_data(df, droppedVarsList, filterList=None):
@@ -91,11 +106,17 @@ def prettify_names(names):
                  "root_depth":"Root depth",
                  "hft":"Hydraulic\nfunctional type",
                  "p50":"$\psi_{50}$",
-                 "gpmax":"K_{max,x}",
+                 "gpmax":"$K_{max,x}$",
                  "c":"Capacitance",
                  "g1":"g$_1$",
                  "n":"$n$",
                  "nlcd": "land cover",
+                 "nlcd_41.0": "Decid forest",
+                 "nlcd_42.0": "Evergrn forest",
+                 "nlcd_43.0": "Mixed forest",
+                 "nlcd_52.0": "Shrub",
+                 "nlcd_71.0": "Grass",
+                 "nlcd_81.0": "Pasture",                 
                  "aspect":"Aspect",
                  "slope":"Slope",
                  "twi":"TWI",
@@ -107,16 +128,11 @@ def prettify_names(names):
                  "vanGen_n":"van Genuchten n",
                  "AI":"Aridity Index",
                  "species":"species",
-                 "species_64.0":"Species 64",
-                 "species_65.0":"Species 65",
-                 "species_69.0":"Species 69",
-                 "species_106.0":"Species 106",
-                 "species_108.0":"Species 108",
-                 "species_122.0":"Species 122",
-                 "species_133.0":"Species 133",
-                 "species_202.0":"Species 202",
-                 "species_746.0":"Species 746",
-                 "species_756.0":"Species 756",
+                 "species_64.0":"Species 64", "species_65.0":"Species 65",
+                 "species_69.0":"Species 69", "species_106.0":"Species 106",
+                 "species_108.0":"Species 108", "species_122.0":"Species 122",
+                 "species_133.0":"Species 133", "species_202.0":"Species 202",
+                 "species_746.0":"Species 746", "species_756.0":"Species 756",
                  "species_814.0":"Species 814"
                  }
     return [new_names[key] for key in names]
@@ -403,29 +419,37 @@ plt.rcParams.update({'font.size': 18})
 
 
 #%% Load data
-path = os.path.join(dirs.dir_data, 'inputFeatures.h5')
-store = pd.HDFStore(path)
-df =  store['df']   # save it
-store.close()
-
-#add particular PWS file
-pwsPath = os.path.join(dirs.dir_data, "pws_features","PWS_through2021.tif") 
-df = add_pws(df, pwsPath)
+dfPath = os.path.join(dirs.dir_data, 'inputFeatures.h5')
+pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_DecThruMay.tif'
+df =  load_data(dfPath, pwsPath)
 
 #oldList: ["lc","isohydricity",'root_depth', 'hft', 'p50', 'c', 'g1',"dry_season_length","lat","lon"],axis = 1, inplace = True)
-droppedVarsList = ["species","AI","vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi",'vpd_cv',"ppt_lte_100","thetas","dry_season_length","t_mean","t_std","lat","lon","Sr","Sbedrock"]
+#ADD THETAS BACK IN!
+droppedVarsList = ["species","AI","vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi",'vpd_cv',"ppt_lte_100","dry_season_length","t_mean","t_std","lat","lon","Sr","Sbedrock"]
 #oldList: (["lc","ndvi","dry_season_length","lat","lon"],axis = 1, inplace = True)
 df = cleanup_data(df, droppedVarsList)
-error
+
+#one-hot encode land cover into six categories
+df = pd.get_dummies(df, columns=['nlcd'])
 
 #%% Train rf
 X_test, y_test, regrn, score,  imp = regress(df)  
  
+#aggregate land cover importance
+#just do manually for now. Probably some sort of cleverer way to do this but...
+nlcdRows = [s for s in df.columns.tolist() if 'nlcd' in s]
+nlcdImpValue = 0
+for rw in nlcdRows:
+    nlcdImpValue += imp.at[rw,'importance']
+nlcdImp = {'importance': nlcdImpValue, 'color':'yellowgreen', 'symbol':'Land cover'}
+imp.loc['nlcd'] = nlcdImp
+imp.drop(nlcdRows, inplace=True)
+imp = imp.sort_values(by=['importance'], ascending=True)
+
 #%% make plots
 ax = plot_corr_feats(df)
-#still a bug somewhere in plot_error_pattern, ignroe for now
-#ax = plot_error_pattern(path, df)
-ax = plot_importance(imp)
+axImp = plot_importance(imp)
+plt.savefig('C:/repos/figures/importance_PWSDecThruMay.png')
 ax = plot_importance_by_category(imp)
 ax = plot_importance_plants(imp)
 x = plot_preds_actual(X_test, y_test, regrn, score)
@@ -443,9 +467,12 @@ and one run noSpec whre don't have species, but have same filterlist'''
 commonSpecList = {65, 69, 122, 202, 756, 64, 106, 108}
 
 #first calculate with species (one-hot encoded)
+#do this slightly compliated way so that keep same number of points for comparison
+#despite some points having non-common species info
 print('with species one-hot encoded') 
 droppedVarsList.remove('species') #so don't drop from list
-df_wSpec = cleanup_data(path, droppedVarsList)
+df_wSpec =  load_data(dfPath, pwsPath)
+df_wSpec = cleanup_data(df_wSpec, droppedVarsList)
 noDataRows = df_wSpec.loc[~df_wSpec.species.isin(commonSpecList)]
 df_wSpec.drop(noDataRows.index, inplace=True)
 df_w1SpecCol = df_wSpec.copy()
