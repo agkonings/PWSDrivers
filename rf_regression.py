@@ -29,7 +29,7 @@ def add_pws(df, pwsPath):
     done in inputFeats dataframes, see make_data.py
     '''
     
-    dspws = gdal.Open(os.path.join(dirs.dir_data, "pws_features","PWS_through2021.tif"))
+    dspws = gdal.Open(pwsPath)
     gtpws= dspws.GetGeoTransform()
     arraypws = np.array(dspws.GetRasterBand(1).ReadAsArray())
     
@@ -110,7 +110,7 @@ def prettify_names(names):
                  "c":"Capacitance",
                  "g1":"g$_1$",
                  "n":"$n$",
-                 "nlcd": "land cover",
+                 "nlcd": "Land cover",
                  "nlcd_41.0": "Decid forest",
                  "nlcd_42.0": "Evergrn forest",
                  "nlcd_43.0": "Mixed forest",
@@ -190,9 +190,12 @@ def regress(df):
     print(f"[INFO] score={score:0.3f}, leaves={leaves}, decrease={decrease}")
     
     # assemble all importance with feature names and colors
+    #rImp = permutation_importance(regrn, X_test, y_test,
+    #                        n_repeats=2, random_state=0)
     rImp = permutation_importance(regrn, X_test, y_test,
-                            n_repeats=2, random_state=0)
+                            n_repeats=2, random_state=8)
     heights = rImp.importances_mean
+    uncBars = rImp.importances_std
     #heights = regrn.feature_importances_
     ticks = X.columns
   
@@ -200,6 +203,7 @@ def regress(df):
                                             = get_categories_and_colors()
     
     imp = pd.DataFrame(index = ticks, columns = ["importance"], data = heights)
+    imp['importance std'] = uncBars
     
     def _colorize(x):
         if x in plant:
@@ -424,8 +428,7 @@ pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_DecThruMay.
 df =  load_data(dfPath, pwsPath)
 
 #oldList: ["lc","isohydricity",'root_depth', 'hft', 'p50', 'c', 'g1',"dry_season_length","lat","lon"],axis = 1, inplace = True)
-#ADD THETAS BACK IN!
-droppedVarsList = ["species","AI","vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi",'vpd_cv',"ppt_lte_100","dry_season_length","t_mean","t_std","lat","lon","Sr","Sbedrock"]
+droppedVarsList = ["species","thetas","AI","vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi",'vpd_cv',"ppt_lte_100","dry_season_length","t_mean","t_std","lat","lon","Sr","Sbedrock"]
 #oldList: (["lc","ndvi","dry_season_length","lat","lon"],axis = 1, inplace = True)
 df = cleanup_data(df, droppedVarsList)
 
@@ -444,15 +447,16 @@ for rw in nlcdRows:
 nlcdImp = {'importance': nlcdImpValue, 'color':'yellowgreen', 'symbol':'Land cover'}
 imp.loc['nlcd'] = nlcdImp
 imp.drop(nlcdRows, inplace=True)
-imp = imp.sort_values(by=['importance'], ascending=True)
+imp.sort_values(by=['importance'], ascending=True, inplace=True)
 
 #%% make plots
 ax = plot_corr_feats(df)
 axImp = plot_importance(imp)
-plt.savefig('C:/repos/figures/importance_PWSDecThruMay.png')
+#plt.savefig('C:/repos/figures/importance_PWSDecThruMay.png')
 ax = plot_importance_by_category(imp)
 ax = plot_importance_plants(imp)
 x = plot_preds_actual(X_test, y_test, regrn, score)
+error
 
 print('now doing species power calculations')    
 '''now check how explanatory power compares if don't have species vs. if have 
