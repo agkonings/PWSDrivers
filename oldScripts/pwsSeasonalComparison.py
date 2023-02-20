@@ -13,12 +13,13 @@ import rioxarray as rxr
 import rasterio
 from rasterio.plot import plotting_extent, show
 import matplotlib.pyplot as plt
-from scipy.stats.stats import pearsonr
+from scipy.stats.stats import pearsonr, spearmanr
 import sklearn.preprocessing
 import matplotlib.patches
 import sklearn.inspection
 from sklearn.inspection import permutation_importance
 import sklearn.metrics
+from sklearn.tree import plot_tree
 
 import dirs
 
@@ -139,7 +140,7 @@ featPath = os.path.join(dirs.dir_data, 'inputFeatures.h5')
 dfDecThruMay =  load_data(featPath, decThruMayPath)
 dfJunThruNov =  load_data(featPath, junThruNovPath)
 
-droppedVarsList = ["twi","thetas","ks","silt","clay","slope","species","AI","vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi",'vpd_cv',"ppt_lte_100","dry_season_length","t_mean","t_std","Sr","Sbedrock"]
+droppedVarsList = ["twi","thetas","ks","silt","clay","slope","species","vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi",'vpd_cv',"ppt_lte_100","dry_season_length","t_mean","t_std","Sr","Sbedrock"]
 dfDecThruMay, lat_DtM, lon_DtM = cleanup_data(dfDecThruMay, droppedVarsList)
 dfJunThruNov, lat_JtN, lon_JtN = cleanup_data(dfJunThruNov, droppedVarsList)
 #pull out same values
@@ -177,6 +178,7 @@ uncBars_DtM = rImp_DtM.importances_std
 ticks_DtM = X_DtM.columns
 imp_DtM = pd.DataFrame(index = ticks_DtM, columns = ["importance"], data = heights_DtM)
 imp_DtM['importance std'] = uncBars_DtM
+print('tot hier')
 
 #now repeat for June through November
 X_JtN = dfJunThruNov.drop("pws",axis = 1)
@@ -235,11 +237,12 @@ plot_map(diffMap, pwsExtent, states, 'Predictions difference', vmin = -1, vmax =
 
 #score = regrn.score(X_test,y_test)
 
+'''
 #try one more, what happens if re-arrange columns
 df2 = dfJunThruNov.copy() 
-df2 = df2[['pws','aspect','slope','twi','agb','dist_to_water','nlcd','elevation',
+df2 = df2[['pws','aspect','agb','dist_to_water','nlcd','elevation',
           'g1','isohydricity','root_depth','canopy_height','p50','gpmax','c',
-          'vanGen_n','ks','silt','clay','thetas']]
+          'vanGen_n','AI']]
 #re-run regression!
 X2 = df2.drop("pws",axis = 1)
 y2 = df2['pws']
@@ -263,5 +266,77 @@ uncBar2 = rImp2.importances_std
 ticks2 = X2.columns
 imp2 = pd.DataFrame(index = ticks2, columns = ["importance"], data = heights2)
 imp2['importance std'] = uncBar2
+'''
 
-#still the same....must be because of corss-correlations
+#plot some heatmaps to see if that explains the patterns
+fig, ax = plt.subplots()
+ax.hist2d(dfJunThruNov['vanGen_n'],dfJunThruNov['pws'], (75,75) )
+plt.xlabel('Van Genuchten n'), plt.ylabel('PWS')
+plt.show()
+fig, ax = plt.subplots()
+ax.hist2d(dfJunThruNov['elevation'],dfJunThruNov['pws'], (75,75) )
+plt.xlabel('Elevation'), plt.ylabel('PWS')
+plt.show()
+
+#plot histograms of different variables
+def calcNormalizedHist(data):
+    zData = ( data - np.mean(data) )/ np.std(data)
+    h, edges = np.histogram(zData, bins=80, range=(-3.1,4))
+    return h, edges
+
+hPWS, edgesPWS = calcNormalizedHist(dfJunThruNov['pws'])
+hGen, edgesGen = calcNormalizedHist(dfJunThruNov['vanGen_n'])
+hElev, edgesElev = calcNormalizedHist(dfJunThruNov['elevation'])
+hAI, edgesAI = calcNormalizedHist(dfJunThruNov['AI'])
+fig, ax = plt.subplots()
+edgeCent = (edgesPWS[0:-1] + edgesPWS[1:] ) / 2
+ax.step(edgeCent, hPWS, label='PWS')
+ax.step(edgeCent, hGen, label='van Genuchten n')
+ax.step(edgeCent, hElev, label='Elevation')
+ax.step(edgeCent, hAI, label='Aridity Index')
+plt.xlabel('z-score')
+plt.legend(loc='upper right')
+plt.show()
+
+#re-confirm anew: cross-correlations between elevation, AI, vanGen_n and PWS are minimal, but
+#vanGen_n builds great model and others don't
+def testOneVar(dataPWS, dataX, name):
+    #re-run regression!
+    #X = df2.drop("pws",axis = 1)
+    #y2 = df2['pws']
+    # separate into train and test set
+    X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(
+        dataX, dataPWS, test_size=0.33, random_state=32)
+    #can get highest with 3 leaves, 120 nEst, decrease 1e-8, but that seems like low number of leaves
+    #old configuration was leaves = 6, decrease 1e-6, nEst = 50
+    # construct rf model
+    regrn = sklearn.ensemble.RandomForestRegressor(min_samples_leaf=2, \
+                                            min_impurity_decrease=decrease, n_estimators = 90)
+    # train
+    regrn.fit(X_train, y_train)
+    # test set performance
+    scoreTest = regrn.score(X_test,y_test)
+    scoreTrain = regrn.score(X_train,y_train)
+    # assemble all importance with feature names and colors
+    rImp = permutation_importance(regrn, X_test, y_test,
+                        n_repeats=3, random_state=8)
+    
+    #fig = plt.figure()
+    #plot_tree(regrn.estimators_[0], 
+    #          feature_names=dataX.columns,
+    #          filled=True, impurity=True, 
+    #          rounded=True)
+        
+    print('RF test score between PWS & ' + name + ': ' + str(scoreTest) )
+    print('RF train score between PWS & ' + name + ': ' + str(scoreTrain) )
+    print('RF importance between PWS & ' + name + ': ' + str(rImp.importances_mean[0]) )
+    print('RF importance between PWS & TWI: ' + str(rImp.importances_mean[1]) )
+    print('Pearson r between PWS & ' + name + ': ' + str(pearsonr(dataPWS,dataX[dataX.columns[0]])[0]) )
+    print('Spearman r between PWS & ' + name + ': ' + str(spearmanr(dataPWS,dataX[dataX.columns[0]])[0]) )
+    
+testOneVar(dfJunThruNov['pws'], dfJunThruNov[['vanGen_n','dist_to_water']], 'van Genuchten n')
+dfJunThruNov['vanGen_n2'] = dfJunThruNov['vanGen_n'].to_numpy() + 0.0001*np.random.rand(192765)
+print('After adding random numbers')
+testOneVar(dfJunThruNov['pws'], dfJunThruNov[['vanGen_n2','dist_to_water']], 'van Genuchten n')
+testOneVar(dfJunThruNov['pws'], dfJunThruNov[['elevation', 'dist_to_water']], 'elevation')
+testOneVar(dfJunThruNov['pws'], dfJunThruNov[['AI', 'dist_to_water']], 'AI')
