@@ -160,28 +160,31 @@ def regress(df):
     # separate into train and test set
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(
         X, y, test_size=0.33, random_state=32)
+    
     '''
     # Checking if leaves or node_impurity affects performance
     # after running found that it has almost no effect (R2 varies by 0.01)
     for leaves in [3, 4, 6]: #[6,7,8,9,10,12, 14, 15]:
-        for decrease in [ 1e-8, 1e-9,5e-10,1e-10]:
-            for nEst in [50,90,120,140]:
+        for decrease in [ 1e-8, 1e-9,1e-10]: 
+            for nEst in [50,100,140]: #[50,90,120,140]: 
                 # construct rf model
                 regrn = sklearn.ensemble.RandomForestRegressor(min_samples_leaf=leaves, \
-                              min_impurity_decrease=decrease, n_estimators = nEst)
+                              max_depth = 25, min_impurity_decrease=decrease, n_estimators = nEst)
                 # train
                 regrn.fit(X_train, y_train)
                 # test set performance
                 score = regrn.score(X_test,y_test)
                 print(f"[INFO] score={score:0.3f}, leaves={leaves}, decrease={decrease}, nEst = {nEst}")
     # choose min leaves in terminal node and node impurity
-    ''' 
+   ''' 
+    
     #can get highest with 3 leaves, 120 nEst, decrease 1e-8, but that seems like low number of leaves
     #old configuration was leaves = 6, decrease 1e-6, nEst = 50
     leaves = 4
     decrease = 1e-8
+    depth = 25
     # construct rf model
-    regrn = sklearn.ensemble.RandomForestRegressor(min_samples_leaf=leaves, \
+    regrn = sklearn.ensemble.RandomForestRegressor(min_samples_leaf=leaves, max_depth=depth, \
                       min_impurity_decrease=decrease, n_estimators = 90)
     # train
     regrn.fit(X_train, y_train)
@@ -424,13 +427,15 @@ plt.rcParams.update({'font.size': 18})
 
 #%% Load data
 dfPath = os.path.join(dirs.dir_data, 'inputFeatures.h5')
-pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_DecThruMay.tif'
+pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_JunThruNov.tif'
 df =  load_data(dfPath, pwsPath)
 
 #oldList: ["lc","isohydricity",'root_depth', 'hft', 'p50', 'c', 'g1',"dry_season_length","lat","lon"],axis = 1, inplace = True)
 droppedVarsList = ["species","thetas","AI","vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi",'vpd_cv',"ppt_lte_100","dry_season_length","t_mean","t_std","lat","lon","Sr","Sbedrock"]
 #oldList: (["lc","ndvi","dry_season_length","lat","lon"],axis = 1, inplace = True)
 df = cleanup_data(df, droppedVarsList)
+df['vanGen_n'] = df['vanGen_n'].to_numpy() + 0.001*np.random.rand(len(df['vanGen_n']))
+df['canopy_height'] = df['canopy_height'].to_numpy() + 0.01*np.random.rand(len(df['canopy_height']))
 
 #one-hot encode land cover into six categories
 df = pd.get_dummies(df, columns=['nlcd'])
@@ -456,7 +461,7 @@ axImp = plot_importance(imp)
 ax = plot_importance_by_category(imp)
 ax = plot_importance_plants(imp)
 x = plot_preds_actual(X_test, y_test, regrn, score)
-error
+
 
 print('now doing species power calculations')    
 '''now check how explanatory power compares if don't have species vs. if have 
@@ -477,6 +482,9 @@ print('with species one-hot encoded')
 droppedVarsList.remove('species') #so don't drop from list
 df_wSpec =  load_data(dfPath, pwsPath)
 df_wSpec = cleanup_data(df_wSpec, droppedVarsList)
+df['vanGen_n'] = df['vanGen_n'].to_numpy() + 0.001*np.random.rand(len(df['vanGen_n']))
+df['canopy_height'] = df['canopy_height'].to_numpy() + 0.01*np.random.rand(len(df['canopy_height']))
+#filter so that only data with most common species are kept
 noDataRows = df_wSpec.loc[~df_wSpec.species.isin(commonSpecList)]
 df_wSpec.drop(noDataRows.index, inplace=True)
 df_w1SpecCol = df_wSpec.copy()
