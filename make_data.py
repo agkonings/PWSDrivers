@@ -92,9 +92,9 @@ def create_df(array,keys):
         ctr+=1
     return df
 
-def check_regridding(gtPWS, gtShape):    
+def check_regridding(gtPWS, gtShape, featFiles, regridDir):    
     for file in featFiles:
-        filepath = os.path.join(regridDataDir, file)
+        filepath = os.path.join(regridDir, file)
         ds = gdal.Open(filepath)
         gt = ds.GetGeoTransform()
         fileData = ds.GetRasterBand(1).ReadAsArray()
@@ -128,13 +128,13 @@ def create_h5(store_path):
     
     #check that all files are now regridded properly with same geotransform and
     #shape. Note that land cover file has problems. Just don't load for now
-    #check_regridding(gtPWS, data['pws'].shape)    
+    #check_regridding(gtPWS, data['pws'].shape, featFiles, regridDir)    
     
-    keys = ['silt','clay','ks','thetas','vanGen_n','isohydricity',\
+    keys = ['sand','clay','ks','bulk_density','theta_third_bar','isohydricity',\
         'root_depth','canopy_height','p50','gpmax', 'c','g1','nlcd',
         "elevation","aspect","slope","twi","dry_season_length","ndvi",\
             "vpd_mean","vpd_cv", "dist_to_water","agb","ppt_mean","ppt_cv",\
-        "t_mean","t_std","ppt_lte_100", "AI","Sr","Sbedrock", "species", "lon","lat"]
+        "t_mean","t_std","ppt_lte_100", "AI","Sr","AWS", "restrictive_depth", "species", "lon","lat"]
     
     array = np.zeros((len(keys), data['pws'].shape[0],data['pws'].shape[1])).astype('float')
     #array[0] = data['pws']
@@ -143,9 +143,9 @@ def create_h5(store_path):
     #add data one by one
     array[0] = get_value( os.path.join(regridDir, 'Unified_NA_Soil_Map_Subsoil_Silt_Fraction.tif'), 1)
     array[1] = get_value( os.path.join(regridDir, 'Unified_NA_Soil_Map_Subsoil_Clay_Fraction.tif'), 1)
-    array[2] = get_value( os.path.join(regridDir, 'Ks_30cm.tif'), 1)
-    array[3] = get_value( os.path.join(regridDir, 'thetas_30cm.tif'), 1)
-    array[4] = get_value( os.path.join(regridDir, 'vanGen_n_30cm.tif'), 1)    
+    array[2] = get_value( os.path.join(regridDir, 'Ksat_0to50cm_4km_westernUS.tif'), 1)
+    array[3] = get_value( os.path.join(regridDir, 'BulkDensityOneThirdBar_0to5cm_resampled_clipped.tif'), 1)
+    array[4] = get_value( os.path.join(regridDir, 'WaterContentOneThirdBar_0to5cm_resampled_clipped.tif'), 1)    
     array[5] = get_value( os.path.join(regridDir, 'isohydricity.tif'), 1)
     array[6] = get_value( os.path.join(regridDir, 'root_depth.tif'), 1)
     array[7] = get_value( os.path.join(regridDir, 'canopy_height.tif'), 1)
@@ -173,11 +173,12 @@ def create_h5(store_path):
     array[26] = get_value( os.path.join(regridDir, 'tStd.tif'), 2)    
     array[27] = get_value( os.path.join(regridDir, 'ppt_lte_100.tif'), 1)    
     array[28] = get_value( os.path.join(regridDir, 'aridity_index.tif'), 1)
-    array[29] = get_value( os.path.join(regridDir, 'Sr.tif'), 1)    
-    array[30] = get_value( os.path.join(regridDir, 'Sbedrock.tif'), 1)        
-    array[31] = get_value( 'C:/repos/data/FIADomSpecies.tif', 1)        
-    array[32] = lons
-    array[33] = lats  
+    array[29] = get_value( os.path.join(regridDir, 'Sr_2020_unmasked_4km_westernUS.tif'), 1)    
+    array[30] = get_value( os.path.join(regridDir, 'AWS_0to150cm_resampled_clipped.tif'), 1)
+    array[31] = get_value( os.path.join(regridDir, 'RestrictiveLayerDepth_resampled_clipped.tif'), 1)                
+    array[32] = get_value( 'C:/repos/data/FIADomSpecies.tif', 1)        
+    array[33] = lons
+    array[34] = lats  
     
     
     ds = None
@@ -186,16 +187,17 @@ def create_h5(store_path):
     #df.dropna(subset = ["pws"], inplace = True)
     
     df.describe()
-    df.loc[df['silt']<-1] = np.nan
+    df.loc[df['sand']<-1] = np.nan
     df.loc[df['clay']<-1] = np.nan
     df.loc[df['ks']<-1] = np.nan
-    df.loc[df['thetas']<-1] = np.nan
-    df.loc[df['nlcd']<41] = np.nan
-    df.loc[df['nlcd']>81] = np.nan
+    df.loc[df['bulk_density']<0] = np.nan
+    df.loc[df['nlcd']<41] = np.nan #remove open space & developed land
+    df.loc[df['nlcd']>81] = np.nan #renive crops
     df.loc[df['elevation']<-1e3] = np.nan
     df.loc[df['slope']<-1e3] = np.nan
     df.loc[df['aspect']>2e3] = np.nan
     df.loc[df['twi']>2e3] = np.nan
+    df.loc[df['restrictive_depth']>1000] = np.nan
     
     #plot map of where there is data
     #first load pws to get grid size
@@ -205,7 +207,7 @@ def create_h5(store_path):
     pws = np.array(ds.GetRasterBand(1).ReadAsArray())
     #plot map
     df2 = df.copy()
-    droppedFeats = ['silt', 'clay', 'ks', 'thetas', 'nlcd', 
+    droppedFeats = ['sand', 'clay', 'ks', 'nlcd', 
                    'elevation', 'slope', 'aspect', 'twi']
     df2.dropna(subset = droppedFeats, inplace = True)
     latMap = np.empty( np.shape(pws) ) * np.nan
@@ -280,7 +282,7 @@ def plot_heatmap(df):
 
 def main():
     #%% make and save dataframe:
-    store_path = os.path.join(dirs.dir_data, 'inputFeatures.h5')
+    store_path = os.path.join(dirs.dir_data, 'inputFeatures_wgNATSGO.h5')
     create_h5(store_path)
     
     #%% Load h5 as type
@@ -289,7 +291,7 @@ def main():
     store = pd.HDFStore(store_path)
     df =  store['df']
     store.close()
-    df.columns = df.coumns.astype(str)    
+    df.columns = df.columns.astype(str)    
     
     #%% Plot heatmap
     plot_heatmap(df)

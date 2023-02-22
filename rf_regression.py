@@ -79,8 +79,8 @@ def get_categories_and_colors():
     yellow = "khaki"
     purple = "magenta"
     
-    plant = ['canopy_height', "agb",'ndvi', "nlcd","species"]
-    soil = ['clay', 'silt','thetas', 'ks', 'vanGen_n','Sr','Sbedrock']
+    plant = ['canopy_height', "agb",'ndvi', "nlcd","species","Sr"]
+    soil = ['clay', 'sand','silt','thetas', 'ks', 'vanGen_n','Sr','Sbedrock','bulk_density','theta_third_bar','AWS']
     climate = [ 'dry_season_length', 'vpd_mean', 'vpd_cv',"ppt_mean","ppt_cv","t_mean","t_std","ppt_lte_100","AI"]
     topo = ['elevation', 'aspect', 'slope', 'twi',"dist_to_water"]
     traits = ['isohydricity', 'root_depth', 'p50', 'gpmax', 'c', 'g1']
@@ -110,6 +110,7 @@ def prettify_names(names):
                  "c":"Capacitance",
                  "g1":"g$_1$",
                  "n":"$n$",
+                 "bulk_density":"bulk density",
                  "nlcd": "Land cover",
                  "nlcd_41.0": "Decid forest",
                  "nlcd_42.0": "Evergrn forest",
@@ -125,8 +126,11 @@ def prettify_names(names):
                  "t_mean":"Temp$_{mean}$",
                  "t_std":"Temp$_{st dev}$",
                  "lon":"Lon", "lat":"Lat",
+                 "theta_third_bar": "$\psi_{0.3}$",
                  "vanGen_n":"van Genuchten n",
+                 "AWS":"avail water storage",
                  "AI":"Aridity Index",
+                 "Sr": "RZ water storage",
                  "species":"species",
                  "species_64.0":"Species 64", "species_65.0":"Species 65",
                  "species_69.0":"Species 69", "species_106.0":"Species 106",
@@ -138,7 +142,7 @@ def prettify_names(names):
     return [new_names[key] for key in names]
     
     
-def regress(df):
+def regress(df, optHyperparam=False):
     """
     Regress features on PWS using rf model
     Parameters
@@ -164,20 +168,23 @@ def regress(df):
     '''
     # Checking if leaves or node_impurity affects performance
     # after running found that it has almost no effect (R2 varies by 0.01)
-    for leaves in [3, 4, 6]: #[6,7,8,9,10,12, 14, 15]:
-        for decrease in [ 1e-8, 1e-9,1e-10]: 
-            for nEst in [50,100,140]: #[50,90,120,140]: 
-                # construct rf model
-                regrn = sklearn.ensemble.RandomForestRegressor(min_samples_leaf=leaves, \
-                              max_depth = 25, min_impurity_decrease=decrease, n_estimators = nEst)
-                # train
-                regrn.fit(X_train, y_train)
-                # test set performance
-                score = regrn.score(X_test,y_test)
-                print(f"[INFO] score={score:0.3f}, leaves={leaves}, decrease={decrease}, nEst = {nEst}")
-    # choose min leaves in terminal node and node impurity
-   ''' 
-    
+    '''
+    if optHyperparam is True:
+        for leaves in [3, 4, 6, 8, 10, 12, 15]: #[6,7,8,9,10,12, 14, 15]:
+            for decrease in [ 1e-8, 1e-9,1e-10]: 
+                for nEst in [50,100,140]: #[50,90,120,140]: 
+                        for depth in [8, 15, 25]:
+                            # construct rf model
+                            regrn = sklearn.ensemble.RandomForestRegressor(min_samples_leaf=leaves, \
+                                  max_depth = 25, min_impurity_decrease=decrease, n_estimators = nEst)
+                            # train
+                            regrn.fit(X_train, y_train)
+                            # test set performance
+                            score = regrn.score(X_test,y_test)
+                            print(f"[INFO] score={score:0.3f}, depth={depth}, leaves={leaves}, decrease={decrease}, nEst = {nEst}")
+                            # choose min leaves in terminal node and node impurity
+                            
+                           
     #can get highest with 3 leaves, 120 nEst, decrease 1e-8, but that seems like low number of leaves
     #old configuration was leaves = 6, decrease 1e-6, nEst = 50
     leaves = 4
@@ -426,16 +433,18 @@ plt.rcParams.update({'font.size': 18})
 
 
 #%% Load data
-dfPath = os.path.join(dirs.dir_data, 'inputFeatures.h5')
+dfPath = os.path.join(dirs.dir_data, 'inputFeatures_wgNATSGO.h5')
 pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_JunThruNov.tif'
 df =  load_data(dfPath, pwsPath)
+#sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.5, see pickFeatures.py
+droppedVarsList = [,'g1','lat','lon','species','restrictive_depth','lat','lon','slope','vpd_cv','t_mean','canopy_height','dry_season_length','AI','ppt_mean','t_std','ppt_lte_100','agb'] #,'root_depth','ks','ppt_cv']
+### explore droppedVarsList = ['AI','isohydricity','p50','gpmax','c','lat','lon','species','restrictive_depth','lat','lon','slope','vpd_cv','t_mean','canopy_height','dry_season_length','ppt_mean','t_std','ppt_lte_100'] #,'root_depth','ks','ppt_cv']
 
-#oldList: ["lc","isohydricity",'root_depth', 'hft', 'p50', 'c', 'g1',"dry_season_length","lat","lon"],axis = 1, inplace = True)
-droppedVarsList = ["species","thetas","AI","vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi",'vpd_cv',"ppt_lte_100","dry_season_length","t_mean","t_std","lat","lon","Sr","Sbedrock"]
-#oldList: (["lc","ndvi","dry_season_length","lat","lon"],axis = 1, inplace = True)
+
+##droppedVarsList = ["species","thetas","AI","vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi",'vpd_cv',"ppt_lte_100","dry_season_length","t_mean","t_std","lat","lon","Sr","Sbedrock"]
 df = cleanup_data(df, droppedVarsList)
-df['vanGen_n'] = df['vanGen_n'].to_numpy() + 0.001*np.random.rand(len(df['vanGen_n']))
-df['canopy_height'] = df['canopy_height'].to_numpy() + 0.01*np.random.rand(len(df['canopy_height']))
+#df['vanGen_n'] = df['vanGen_n'].to_numpy() + 0.001*np.random.rand(len(df['vanGen_n']))
+#df['canopy_height'] = df['canopy_height'].to_numpy() + 0.01*np.random.rand(len(df['canopy_height']))
 
 #one-hot encode land cover into six categories
 df = pd.get_dummies(df, columns=['nlcd'])
@@ -482,8 +491,8 @@ print('with species one-hot encoded')
 droppedVarsList.remove('species') #so don't drop from list
 df_wSpec =  load_data(dfPath, pwsPath)
 df_wSpec = cleanup_data(df_wSpec, droppedVarsList)
-df['vanGen_n'] = df['vanGen_n'].to_numpy() + 0.001*np.random.rand(len(df['vanGen_n']))
-df['canopy_height'] = df['canopy_height'].to_numpy() + 0.01*np.random.rand(len(df['canopy_height']))
+#df['vanGen_n'] = df['vanGen_n'].to_numpy() + 0.001*np.random.rand(len(df['vanGen_n']))
+#df['canopy_height'] = df['canopy_height'].to_numpy() + 0.01*np.random.rand(len(df['canopy_height']))
 #filter so that only data with most common species are kept
 noDataRows = df_wSpec.loc[~df_wSpec.species.isin(commonSpecList)]
 df_wSpec.drop(noDataRows.index, inplace=True)
@@ -495,7 +504,7 @@ ax = plot_importance(imp_wSpec)
 #calculate RF performance on same points, but without species info
 print('without species info') 
 df_noSpec = df_w1SpecCol.drop('species', axis=1, inplace=False)
-X_test_noSpec, y_test_noSpec, regrn_noSpec, score_noSpec,  imp_noSpec = regress(df_noSpec) 
+X_test_noSpec, y_test_noSpec, regrn_noSpec, score_noSpec,  imp_noSpec = regress(df_noSpec, optHyperparam=False) 
 ax = plot_importance(imp_noSpec)
 
 #instead, for each unique species, calculate a predicted value
