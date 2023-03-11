@@ -64,7 +64,7 @@ for feat in df.drop('pws', axis=1).columns:
 df.drop(['isohydricity','root_depth','p50','gpmax','c','g1','species','lat','lon'], axis = 1, inplace=True)
 
 #then calculate cross correation with PWS 
-corrMat = df.corr()
+corrMat = df.corr(method='spearman')
 
 '''
 for simplicity, just manually look at what is highest wth PWS
@@ -76,9 +76,29 @@ etc....two ks, ppt_cv with only slightly above 0.5 correlation.
 so with threshold of 0.5 hard cut-off what is left is
 VPD_min, NDVI, bulk_density, dist_to_water, nlcd, elevation, sand, clay
 '''
+'''
+If redo with spearman
+vpd_mean, ndvi, aws, theta_third_bar, ppt_cv, restrictive_depth,
+sand, clay, ks, bulk_density, theta_third_bar,'nlcd','elevation', 'aspect','twi'
+dist_to_water
 
 '''
-possibly want to repeat with looking at what is cross-correlated with speices
+
+'''
+want to repeat with looking at what is cross-correlated with speices
 and where have data that overlaps with species (e.g. not places where have species
                                                 but not triats)
 '''
+commonSpecList = {65, 69, 122, 202, 756, 64, 106, 108}
+
+#first calculate with species (one-hot encoded)
+#do this slightly compliated way so that keep same number of points for comparison
+#despite some points having non-common species info
+df_wSpec =  load_data(dfPath, pwsPath)
+#df_wSpec.drop(['isohydricity','root_depth','p50','gpmax','c','g1','lat','lon'], axis = 1, inplace=True)
+#keep only rows with most common species
+noDataRows = df_wSpec.loc[~df_wSpec.species.isin(commonSpecList)]
+df_wSpec.drop(noDataRows.index, inplace=True)
+
+corrMatSpec = df.corr()
+#so specDropList = ['isohydricity','root_depth','p50','gpmax','c','g1','lat','lon','dry_season_length','vpd_cv','canopy_height','ppt_mean','ppt_lte_100','agb','elevation']

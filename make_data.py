@@ -144,8 +144,8 @@ def create_h5(store_path):
     array[0] = get_value( os.path.join(regridDir, 'Unified_NA_Soil_Map_Subsoil_Silt_Fraction.tif'), 1)
     array[1] = get_value( os.path.join(regridDir, 'Unified_NA_Soil_Map_Subsoil_Clay_Fraction.tif'), 1)
     array[2] = get_value( os.path.join(regridDir, 'Ksat_0to50cm_4km_westernUS.tif'), 1)
-    array[3] = get_value( os.path.join(regridDir, 'BulkDensityOneThirdBar_0to5cm_resampled_clipped.tif'), 1)
-    array[4] = get_value( os.path.join(regridDir, 'WaterContentOneThirdBar_0to5cm_resampled_clipped.tif'), 1)    
+    array[3] = get_value( os.path.join(regridDir, 'BulkDensityOneThirdBar_0to50cm_4km_westernUS.tif'), 1)
+    array[4] = get_value( os.path.join(regridDir, 'WaterContentOneThirdBar_0to50cm_4km_westernUS.tif'), 1)    
     array[5] = get_value( os.path.join(regridDir, 'isohydricity.tif'), 1)
     array[6] = get_value( os.path.join(regridDir, 'root_depth.tif'), 1)
     array[7] = get_value( os.path.join(regridDir, 'canopy_height.tif'), 1)
@@ -174,7 +174,7 @@ def create_h5(store_path):
     array[27] = get_value( os.path.join(regridDir, 'ppt_lte_100.tif'), 1)    
     array[28] = get_value( os.path.join(regridDir, 'aridity_index.tif'), 1)
     array[29] = get_value( os.path.join(regridDir, 'Sr_2020_unmasked_4km_westernUS.tif'), 1)    
-    array[30] = get_value( os.path.join(regridDir, 'AWS_0to150cm_resampled_clipped.tif'), 1)
+    array[30] = get_value( os.path.join(regridDir, 'AWS_0to150cm_4km_westernUS.tif'), 1)
     array[31] = get_value( os.path.join(regridDir, 'RestrictiveLayerDepth_resampled_clipped.tif'), 1)                
     array[32] = get_value( 'C:/repos/data/FIADomSpecies.tif', 1)        
     array[33] = lons
@@ -207,7 +207,8 @@ def create_h5(store_path):
     pws = np.array(ds.GetRasterBand(1).ReadAsArray())
     #plot map
     df2 = df.copy()
-    droppedFeats = ['sand', 'clay', 'ks', 'nlcd', 
+    droppedFeats = ['sand', 'clay', 'ks', 'nlcd', 'bulk_density','theta_third_bar',
+                    'isohydricity','root_depth','p50','gpmax','c','g1',
                    'elevation', 'slope', 'aspect', 'twi']
     df2.dropna(subset = droppedFeats, inplace = True)
     latMap = np.empty( np.shape(pws) ) * np.nan
@@ -292,6 +293,7 @@ def main():
     df =  store['df']
     store.close()
     df.columns = df.columns.astype(str)    
+    df.head()
     
     #%% Plot heatmap
     plot_heatmap(df)

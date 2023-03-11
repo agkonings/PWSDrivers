@@ -51,7 +51,8 @@ def plot_map(arrayToPlot, pwsExtent, stateBorders, title, vmin = None, vmax = No
 #load 
 decThruMayPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_DecThruMay.tif'
 pwsDecThruMayMap =rxr.open_rasterio(decThruMayPath, masked=True).squeeze()
-junThruNovPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_JunThruNov.tif'
+#junThruNovPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_JunThruNov.tif'
+junThruNovPath = 'C:/repos/data/inputFeatures_wGNATSGO.h5'
 pwsJunThruNovMap =rxr.open_rasterio(junThruNovPath, masked=True).squeeze()
 
 

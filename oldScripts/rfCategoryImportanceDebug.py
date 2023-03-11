@@ -1,3 +1,6 @@
+'''file used in debugging why soils seemed to be consistently the largest predictors
+ultimately decided was too deep''
+
 # -*- coding: utf-8 -*-
 import os
 
@@ -13,7 +16,6 @@ import matplotlib.patches
 import sklearn.inspection
 from sklearn.inspection import permutation_importance
 import sklearn.metrics
-from scipy.stats.stats import spearmanr
 from scipy.stats.stats import pearsonr
 
 import dirs
@@ -58,7 +60,7 @@ def load_data(dfPath, pwsPath):
 
     return df
 
-def cleanup_data(df, droppedVarsList, filterList=None):
+def cleanup_data(df, droppedVarsList,):
     """
     path : where h5 file is stored
     droppedVarsList : column names that shouldn't be included in the calculation
@@ -82,7 +84,7 @@ def get_categories_and_colors():
     purple = "magenta"
     
     plant = ['canopy_height', "agb",'ndvi', "nlcd","species"]
-    soil = ['clay', 'sand','silt','thetas', 'ks', 'vanGen_n','Sr','Sbedrock','bulk_density','theta_third_bar','AWS']
+    soil = ['clay', 'silt','thetas', 'ks', 'vanGen_n','Sr','Sbedrock']
     climate = [ 'dry_season_length', 'vpd_mean', 'vpd_cv',"ppt_mean","ppt_cv","t_mean","t_std","ppt_lte_100","AI"]
     topo = ['elevation', 'aspect', 'slope', 'twi',"dist_to_water"]
     traits = ['isohydricity', 'root_depth', 'p50', 'gpmax', 'c', 'g1']
@@ -112,7 +114,6 @@ def prettify_names(names):
                  "c":"Capacitance",
                  "g1":"g$_1$",
                  "n":"$n$",
-                 "bulk_density":"Bulk density",
                  "nlcd": "Land cover",
                  "nlcd_41.0": "Decid forest",
                  "nlcd_42.0": "Evergrn forest",
@@ -128,12 +129,8 @@ def prettify_names(names):
                  "t_mean":"Temp$_{mean}$",
                  "t_std":"Temp$_{st dev}$",
                  "lon":"Lon", "lat":"Lat",
-                 "theta_third_bar": "$\psi_{0.3}$",
                  "vanGen_n":"van Genuchten n",
-                 "AWS":"Avail water storage",
                  "AI":"Aridity Index",
-                 "Sr": "RZ water storage",
-                 "restrictive_depth": "Restricton depth",
                  "species":"species",
                  "species_64.0":"Species 64", "species_65.0":"Species 65",
                  "species_69.0":"Species 69", "species_106.0":"Species 106",
@@ -145,7 +142,7 @@ def prettify_names(names):
     return [new_names[key] for key in names]
     
     
-def regress(df, optHyperparam=False):
+def regress(df):
     """
     Regress features on PWS using rf model
     Parameters
@@ -167,36 +164,29 @@ def regress(df, optHyperparam=False):
     # separate into train and test set
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(
         X, y, test_size=0.33, random_state=32)
-    
     '''
     # Checking if leaves or node_impurity affects performance
     # after running found that it has almost no effect (R2 varies by 0.01)
-    '''
-    if optHyperparam is True:
-        for leaves in [3, 8, 15]: #[6,7,8,9,10,12, 14, 15]:
-            for decrease in [ 1e-8, 1e-10]: 
-                for nEst in [50,120]: #[50,90,120,140]: 
-                        for depth in [8, 15, 25]:
-                            # construct rf model
-                            regrn = sklearn.ensemble.RandomForestRegressor(min_samples_leaf=leaves, \
-                                  max_depth = depth, min_impurity_decrease=decrease, n_estimators = nEst)
-                            # train
-                            regrn.fit(X_train, y_train)
-                            # test set performance
-                            score = regrn.score(X_test,y_test)
-                            print(f"[INFO] score={score:0.3f}, leaves={leaves}, decrease={decrease}, nEst = {nEst}, depth={depth}")
-                            # choose min leaves in terminal node and node impurity
-                            
-                           
+    for leaves in [3, 4, 6]: #[6,7,8,9,10,12, 14, 15]:
+        for decrease in [ 1e-8, 1e-9,5e-10,1e-10]:
+            for nEst in [50,90,120,140]:
+                # construct rf model
+                regrn = sklearn.ensemble.RandomForestRegressor(min_samples_leaf=leaves, \
+                              min_impurity_decrease=decrease, n_estimators = nEst)
+                # train
+                regrn.fit(X_train, y_train)
+                # test set performance
+                score = regrn.score(X_test,y_test)
+                print(f"[INFO] score={score:0.3f}, leaves={leaves}, decrease={decrease}, nEst = {nEst}")
+    # choose min leaves in terminal node and node impurity
+    ''' 
     #can get highest with 3 leaves, 120 nEst, decrease 1e-8, but that seems like low number of leaves
     #old configuration was leaves = 6, decrease 1e-6, nEst = 50
-    leaves = 3 #4
+    leaves = 4
     decrease = 1e-8
-    depth = 15 #25
-    nEst = 120
     # construct rf model
-    regrn = sklearn.ensemble.RandomForestRegressor(min_samples_leaf=leaves, max_depth=depth, \
-                      min_impurity_decrease=decrease, n_estimators = nEst)
+    regrn = sklearn.ensemble.RandomForestRegressor(min_samples_leaf=leaves, \
+                      min_impurity_decrease=decrease, n_estimators = 90)
     # train
     regrn.fit(X_train, y_train)
     # test set performance
@@ -263,11 +253,11 @@ def plot_preds_actual(X_test, y_test, regrn, score):
     y_hat =regrn.predict(X_test)
     
     fig, ax = plt.subplots(figsize = (3,3))
-    ax.scatter(y_hat, y_test, s = 1, alpha = 0.05, color='k')
+    ax.scatter(y_hat, y_test, s = 1, alpha = 0.05, color = "k")
     ax.set_xlabel("Predicted PWS", fontsize = 18)
     ax.set_ylabel("Actual PWS", fontsize = 18)
-    ax.set_xlim(0,1.6)
-    ax.set_ylim(0,1.6)
+    ax.set_xlim(0,2)
+    ax.set_ylim(0,2)
     ax.annotate(f"R$^2$={score:0.2f}", (0.1,0.9),xycoords = "axes fraction", ha = "left")
     return ax
 
@@ -437,28 +427,20 @@ plt.rcParams.update({'font.size': 18})
 
 
 #%% Load data
-dfPath = os.path.join(dirs.dir_data, 'inputFeatures_wgNATSGO.h5')
+dfPath = os.path.join(dirs.dir_data, 'inputFeatures.h5')
 pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_JunThruNov.tif'
 df =  load_data(dfPath, pwsPath)
-#sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.5, see pickFeatures.py
-#droppedVarsList = ['lat','lon','species','restrictive_depth','lat','lon','slope','vpd_cv','t_mean','canopy_height','dry_season_length','vpd_mean','ppt_mean','t_std','ppt_lte_100','agb'] #,'root_depth','ks','ppt_cv']
-specDropList_fromNoTraitsCorrMat = ['species','lat','lon','dry_season_length','vpd_cv','canopy_height','ppt_mean','ppt_lte_100','agb','elevation']
-specDropList = ['species','lat','lon','dry_season_length','vpd_cv','canopy_height','ppt_mean','ppt_lte_100','agb']
-droppedVarsList = specDropList
-#'isohydricity','root_depth','p50','gpmax','c','g1'
-### explore droppedVarsList = ['AI','isohydricity','p50','gpmax','c','lat','lon','species','restrictive_depth','lat','lon','slope','vpd_cv','t_mean','canopy_height','dry_season_length','ppt_mean','t_std','ppt_lte_100'] #,'root_depth','ks','ppt_cv']
 
-##droppedVarsList = ["species","thetas","AI","vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi",'vpd_cv',"ppt_lte_100","dry_season_length","t_mean","t_std","lat","lon","Sr","Sbedrock"]
+#oldList: ["lc","isohydricity",'root_depth', 'hft', 'p50', 'c', 'g1',"dry_season_length","lat","lon"],axis = 1, inplace = True)
+droppedVarsList = ["species","vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi",'vpd_cv',"ppt_lte_100","dry_season_length","t_mean","t_std","lat","lon","Sr","Sbedrock"]
+#oldList: (["lc","ndvi","dry_season_length","lat","lon"],axis = 1, inplace = True)
 df = cleanup_data(df, droppedVarsList)
-#df['vanGen_n'] = df['vanGen_n'].to_numpy() + 0.001*np.random.rand(len(df['vanGen_n']))
-#df['canopy_height'] = df['canopy_height'].to_numpy() + 0.01*np.random.rand(len(df['canopy_height']))
-
 
 #one-hot encode land cover into six categories
 df = pd.get_dummies(df, columns=['nlcd'])
 
 #%% Train rf
-X_test, y_test, regrn, score,  imp = regress(df, optHyperparam=False)  
+X_test, y_test, regrn, score,  imp = regress(df)  
  
 #aggregate land cover importance
 #just do manually for now. Probably some sort of cleverer way to do this but...
@@ -474,102 +456,87 @@ imp.sort_values(by=['importance'], ascending=True, inplace=True)
 #%% make plots
 ax = plot_corr_feats(df)
 axImp = plot_importance(imp)
-#plt.savefig('C:/repos/figures/importance_PWSDecThruMay.png')
+#plt.savefig('C:/repos/figures/importance_PWSJunThruNov.png')
 ax = plot_importance_by_category(imp)
 ax = plot_importance_plants(imp)
 x = plot_preds_actual(X_test, y_test, regrn, score)
 
+'''
+foudn that soil importance is too high since PWS changes dramatically 
+depending on the season and the model also changes dramatically, but importances
+stay suspiciously similar. Much debugging later, best guess is that this is
+because of cross-correlations between inputs. To get a better sense of importances
+try to see a) how well model does if only have one trait from each
+    and b) what improtance look like if drop all soils, all climate, etc
+long-term, look at see if can do some sort of clustering
+'''
+#Part b above first
+df_noSoil = df.copy()
+df_noSoil = cleanup_data(df_noSoil, ['silt','clay','ks','thetas','vanGen_n'])
+X_test_noSoil, y_test_noSoil, regrn_noSoil, score_noSoil,  imp_noSoil = regress(df_noSoil)  
+df_noPlant = df.copy()
+df_noPlant = cleanup_data(df_noPlant, ['agb','canopy_height','nlcd_42.0',
+                                       'nlcd_43.0', 'nlcd_52.0', 'nlcd_71.0','nlcd_81.0'])
+X_test_noPlant, y_test_noPlant, regrn_noPlant, score_noPlant,  imp_noPlant = regress(df_noPlant)  
+df_noTopo = df.copy()
+df_noTopo = cleanup_data(df_noTopo, ['elevation','slope','aspect','twi','dist_to_water'])
+X_test_noTopo, y_test_noTopo, regrn_noTopo, score_noTopo,  imp_noTopo = regress(df_noTopo)  
+df_noClim = df.copy()
+df_noClim = cleanup_data(df_noClim, ['AI'])
+X_test_noClim, y_test_noClim, regrn_noClim, score_noClim,  imp_noClim = regress(df_noClim)  
+df_noTrait = df.copy()
+df_noTrait = cleanup_data(df_noClim, ['isohydricity','root_depth','gpmax','c','g1'])
+X_test_noTrait, y_test_noTrait, regrn_noTrait, score_noTrait,  imp_noTrait = regress(df_noTrait)  
+print('Without soils, R$^2$ = ' + str(score_noSoil))
+print('Without vegetation intensity, R$^2$ = ' + str(score_noPlant))
+print('Without topography, R$^2$ = ' + str(score_noTopo))
+print('Without AI, R$^2$ = ' + str(score_noClim))
+print('Without traits, R$^2$ = ' + str(score_noTrait))
 
-print('now doing species power calculations')    
-'''now check how explanatory power compares if don't have species vs. if have 
-top 10 species one-hot-encoded
-so want one run wSpec where have one-hot-encoded, don't drop species
-and one run noSpec whre don't have species, but have same filterlist'''
+#then see how well model looks if only have one trati from each
+df_onePer = df.copy()
+df_onePer = cleanup_data(df_onePer, ['silt','clay','ks','thetas','isohydricity','root_depth',
+                                     'canopy_height','p50','gpmax','g1','aspect','slope','twi',
+                                     'dist_to_water','agb','nlcd_41.0','nlcd_42.0','nlcd_43.0',
+                                     'nlcd_71.0','nlcd_81.0','c','nlcd_52.0'])
+X_test_onePer, y_test_onePer, regrn_onePer, score_onePer,  imp_onePer = regress(df_onePer)  
+print('One per category, R$^2$ = ' + str(score_onePer))
 
-#common species list hand-calculated separately based on most entries in species column
-#shorter list gets about 0.03 better r2 because have more data, so use that as in between point
-#between enough data to do well and not too many columns
-#commonSpecList = {65, 69, 122, 202, 756, 64, 106, 108, 133, 746, 814}
-commonSpecList = {65, 69, 122, 202, 756, 64, 106, 108}
+#only elevation and van Genuchten still gets you R2=0.56!
+#only van Genuchten = 0.58
+#crazy...are these two jsut cross correlated
+#no, previous correlation mat shows vanGen_n and AI only 0.20 correlation
+#so waht about predictions? Are they cross correlated
+df_onlyGen = df.copy()
+df_onlyGen = cleanup_data(df_onlyGen, ['silt','clay','ks','thetas','isohydricity','root_depth',
+                                     'canopy_height','p50','gpmax','g1','aspect','slope','twi',
+                                     'dist_to_water','agb','nlcd_41.0','nlcd_42.0','nlcd_43.0',
+                                     'nlcd_71.0','nlcd_81.0','c','nlcd_52.0','AI','elevation'])
+X_test_onlyGen, y_test_onlyGen, regrn_onlyGen, score_onlyGen,  imp_onlyGen = regress(df_onlyGen)  
+print('Only van Genuchten, R$^2$ = ' + str(score_onlyGen))
 
-#first calculate with species (one-hot encoded)
-#do this slightly compliated way so that keep same number of points for comparison
-#despite some points having non-common species info
-print('with species one-hot encoded') 
-droppedVarsList.remove('species') #so don't drop from list
-df_wSpec =  load_data(dfPath, pwsPath)
-df_wSpec = cleanup_data(df_wSpec, droppedVarsList)
-#df['vanGen_n'] = df['vanGen_n'].to_numpy() + 0.001*np.random.rand(len(df['vanGen_n']))
-#df['canopy_height'] = df['canopy_height'].to_numpy() + 0.01*np.random.rand(len(df['canopy_height']))
-#filter so that only data with most common species are kept
-noDataRows = df_wSpec.loc[~df_wSpec.species.isin(commonSpecList)]
-df_wSpec.drop(noDataRows.index, inplace=True)
-df_w1SpecCol = df_wSpec.copy()
-df_wSpec = pd.get_dummies(df_wSpec, columns=['species'])
-X_test_wSpec, y_test_wSpec, regrn_wSpec, score_wSpec,  imp_wSpec = regress(df_wSpec, optHyperparam=False) 
-#aggregate species importance
-#just do manually for now. Probably some sort of cleverer way to do this but...
-specRows = [s for s in df_wSpec.columns.tolist() if 'species' in s]
-specImpValue = 0
-for row in specRows:
-    specImpValue += imp_wSpec.at[row,'importance']
-specImp = {'importance': specImpValue, 'color':'yellowgreen', 'symbol':'Species'}
-imp_wSpec.loc['species'] = specImp
-imp_wSpec.drop(specRows, inplace=True)
-imp_wSpec.sort_values(by=['importance'], ascending=True, inplace=True)
-ax = plot_importance(imp_wSpec)
-ax = plot_importance_by_category(imp_wSpec)
-ax = plot_importance_plants(imp_wSpec)
-x = plot_preds_actual(X_test_wSpec, y_test_wSpec, regrn_wSpec, score_wSpec)
+df_onlyElev = df.copy()
+df_onlyElev = cleanup_data(df_onlyElev, ['silt','clay','ks','thetas','isohydricity','root_depth',
+                                     'canopy_height','p50','gpmax','g1','aspect','slope','twi',
+                                     'dist_to_water','agb','nlcd_41.0','nlcd_42.0','nlcd_43.0',
+                                     'nlcd_71.0','nlcd_81.0','c','nlcd_52.0','AI','vanGen_n'])
+X_test_onlyElev, y_test_onlyElev, regrn_onlyElev, score_onlyElev,  imp_onlyElev = regress(df_onlyElev)  
+print('Only elevation, R$^2$ = ' + str(score_onlyElev))
+pearsonr(y_test_onlyGen, y_test_onlyElev)
 
-#instead, for each unique species, calculate a predicted value
-'''print('predictive ability with all species') 
-pwsVec = df_w1SpecCol['pws']
-specVec = df_w1SpecCol['species']
-pwsPred = np.zeros(pwsVec.shape)
-specNumbers = {}
-for specCode in np.unique(df_wSpec['species']):
-    specNumbers[specCode]=np.sum(specVec == specCode)
-    #differentiating (obs_i-X)^2 shows that optimal predictor is mean of each cat
-    thisMean = np.mean( pwsVec[specVec == specCode] )
-    pwsPred[specVec == specCode] = thisMean
+df_onlyAI = df.copy()
+df_onlyAI = cleanup_data(df_onlyAI, ['silt','clay','ks','thetas','isohydricity','root_depth',
+                                     'canopy_height','p50','gpmax','g1','aspect','slope','twi',
+                                     'dist_to_water','agb','nlcd_41.0','nlcd_42.0','nlcd_43.0',
+                                     'nlcd_71.0','nlcd_81.0','c','nlcd_52.0','elevation','vanGen_n'])
+X_test_onlyAI, y_test_onlyAI, regrn_onlyAI, score_onlyAI,  imp_onlyAI = regress(df_onlyAI)  
+print('Only AI, R$^2$ = ' + str(score_onlyAI))
 
-resPred = pwsVec - pwsPred
-SSres = np.sum(resPred**2)
-SStot = np.sum( (pwsVec - np.mean(pwsVec))**2 ) #total sum of squares
-coeffDeterm = 1 - SSres/SStot'''
-
-print('predictive ability with top species') 
-pwsVec = df_w1SpecCol['pws']
-specVec = df_w1SpecCol['species']
-pwsPred = np.zeros(pwsVec.shape)
-specNumbers = {}
-for specCode in np.unique(df_w1SpecCol['species']):
-    specNumbers[specCode]=np.sum(specVec == specCode)
-    #differentiating (obs_i-X)^2 shows that optimal predictor is mean of each cat
-    thisMean = np.mean( pwsVec[specVec == specCode] )
-    pwsPred[specVec == specCode] = thisMean
-
-resPred = pwsVec - pwsPred
-SSres = np.sum(resPred**2)
-SStot = np.sum( (pwsVec - np.mean(pwsVec))**2 ) #total sum of squares
-coeffDeterm = 1 - SSres/SStot
-
-print('amount explained with ONLY species info ' + str(coeffDeterm))
-print('fraction explained by species' + str(coeffDeterm/score_wSpec))
-
-AIExp = spearmanr(df_w1SpecCol['pws'], df_w1SpecCol['AI'])
-
-'''NBcoeffDeterm was about 0.15 with all species, now 0.12 with top species'
-
-summary findings = scores very similar!! 0.438 vs 0.436 with or without species.
-so doesn't help much. coeffDeterm = 0.14 so species alone can get about 1/3rd of var
-That is, R2 about 0.12 with categorical prediction from species vs about 0.45 with RF
-note also that while there are 199 species, there's a ton that barely have any representation
-most common are: spec 65 (n=2256), spec 69 (n=1284), spec 122 (2589), spec202 (1631)
-spec 756 (3151). So the top 5 species adds up to 10911 out of 19551 pixels (56%)
-if add a bit more, we also have spec 58 (405), spec 64 (660), spec 106 (561), spec 108 (753),
-spec 133 (492), spec 746 (486), spec 814 (465)
-top 8 species gets 12885 or 66%
-so toop 11 species gets 14241, or 73%
-so could do 7-way one-hot encoding as additional test and compairson of interations'''
+#keep only top three
+df_topThree = df.copy()
+df_topThree = cleanup_data(df_topThree, ['silt','clay','ks','thetas','isohydricity','root_depth',
+                                     'canopy_height','p50','gpmax','g1','aspect','slope','twi',
+                                     'dist_to_water','agb','nlcd_41.0','nlcd_42.0','nlcd_43.0',
+                                     'nlcd_71.0','nlcd_81.0','c','nlcd_52.0'])
+X_test_topThree, y_test_topThree, regrn_topThree, score_topThree,  imp_topThree = regress(df_topThree)  
+print('Top three, R$^2$ = ' + str(score_topThree))
