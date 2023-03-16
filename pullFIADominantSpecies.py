@@ -148,6 +148,12 @@ print('TEST hopefully equivalent # of indices is: ', str(len(indX)))
 #dominantThresh 0.8: 30658. Just leave at 0.75
 #note that a large amount of these are not in relevant state sor where other vars have values
 
+#pull out two basal area estimates
+BALiveAcMap = np.zeros(pws.shape) * np.nan
+BALiveAcMap[indY, indX] = dominantLocs['BALiveAc']
+BALIVEMap = np.zeros(pws.shape) * np.nan
+BALIVEMap[indY, indX] = dominantLocs['BALIVE']
+
 #save geotiff
 driver = gdal.GetDriverByName('GTiff')
 output_file = 'FIADomSpecies.tif'
@@ -157,8 +163,21 @@ dataset.GetRasterBand(1).WriteArray(domSpec)
 dataset.FlushCache()#Writetodisk.
 dataset=None
 
+driver = gdal.GetDriverByName('GTiff')
+output_file = 'FIABasalAreaAc.tif'
+dataset = driver.Create(output_file, pws_x,pws_y, 1, gdal.GDT_Float32)
+dataset.SetGeoTransform(gt)
+dataset.GetRasterBand(1).WriteArray(BALiveAcMap)
+dataset.FlushCache()#Writetodisk.
+dataset=None
 
-
+driver = gdal.GetDriverByName('GTiff')
+output_file = 'FIABasalArea.tif'
+dataset = driver.Create(output_file, pws_x,pws_y, 1, gdal.GDT_Float32)
+dataset.SetGeoTransform(gt)
+dataset.GetRasterBand(1).WriteArray(BALIVEMap)
+dataset.FlushCache()#Writetodisk.
+dataset=None
 
 '''Now repeat with P50 file to make sure gets fewer points
 
