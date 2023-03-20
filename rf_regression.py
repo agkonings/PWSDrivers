@@ -81,13 +81,12 @@ def get_categories_and_colors():
     yellow = "khaki"
     purple = "magenta"
     
-    plant = ['canopy_height', "agb",'ndvi', "nlcd","species"]
+    plant = ['canopy_height', "agb",'ndvi', "nlcd","species",'isohydricity', 'root_depth', 'p50', 'gpmax', 'c', 'g1']
     soil = ['clay', 'sand','silt','thetas', 'ks', 'vanGen_n','Sr','Sbedrock','bulk_density','theta_third_bar','AWS']
     climate = [ 'dry_season_length', 'vpd_mean', 'vpd_cv',"ppt_mean","ppt_cv","t_mean","t_std","ppt_lte_100","AI"]
     topo = ['elevation', 'aspect', 'slope', 'twi',"dist_to_water"]
-    traits = ['isohydricity', 'root_depth', 'p50', 'gpmax', 'c', 'g1']
     
-    return green, brown, blue, yellow, purple, plant, soil, climate, topo, traits
+    return green, brown, blue, yellow, plant, soil, climate, topo 
 
 def prettify_names(names):
     new_names = {"ks":"K$_{s,max}$",
@@ -213,7 +212,7 @@ def regress(df, optHyperparam=False):
     #heights = regrn.feature_importances_
     ticks = X.columns
   
-    green, brown, blue, yellow, purple, plant, soil, climate, topo, traits \
+    green, brown, blue, yellow, plant, soil, climate, topo, \
                                             = get_categories_and_colors()
     
     imp = pd.DataFrame(index = ticks, columns = ["importance"], data = heights)
@@ -226,8 +225,6 @@ def regress(df, optHyperparam=False):
             return brown
         elif x in climate:
             return blue
-        elif x in traits:
-            return purple
         else:
             return yellow
     imp["color"] = imp.index
@@ -335,7 +332,7 @@ def plot_importance(imp):
     """
     
     fig, ax = plt.subplots(figsize = (5.5,7))
-    green, brown, blue, yellow, purple, plant, soil, climate, topo, traits \
+    green, brown, blue, yellow, plant, soil, climate, topo \
                                             = get_categories_and_colors()
 
     imp.plot.barh(y = "importance",x="symbol",color = imp.color, edgecolor = "grey", ax = ax, fontsize = 18)
@@ -347,9 +344,7 @@ def plot_importance(imp):
                        matplotlib.patches.Patch(facecolor=yellow, edgecolor='grey',
                              label='Topography'), 
                        matplotlib.patches.Patch(facecolor=blue, edgecolor='grey',
-                             label='Climate'),
-                       matplotlib.patches.Patch(facecolor=purple, edgecolor='grey',
-                             label='Traits')]
+                             label='Climate')]
     ax.legend(handles=legend_elements, fontsize = 18)
     ax.set_xlabel("Variable importance", fontsize = 18)
     ax.set_ylabel("")
@@ -365,10 +360,10 @@ def plot_importance_by_category(imp):
     """
     Feature importance combined by categories
     """
-    green, brown, blue, yellow, purple, plant, soil, climate, topo, traits \
+    green, brown, blue, yellow, plant, soil, climate, topo \
                                             = get_categories_and_colors()
-    combined = pd.DataFrame({"category":["plant","climate","soil","topography","traits"], \
-                             "color":[green, blue, brown, yellow, purple]})
+    combined = pd.DataFrame({"category":["plant","climate","soil","topography"], \
+                             "color":[green, blue, brown, yellow]})
     combined = combined.merge(imp.groupby("color").sum(), on = "color")
     
     combined = combined.sort_values("importance")
@@ -440,15 +435,12 @@ plt.rcParams.update({'font.size': 18})
 dfPath = os.path.join(dirs.dir_data, 'inputFeatures_wgNATSGO.h5')
 pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_JunThruNov.tif'
 df =  load_data(dfPath, pwsPath)
-#sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.5, see pickFeatures.py
-#droppedVarsList = ['lat','lon','species','restrictive_depth','lat','lon','slope','vpd_cv','t_mean','canopy_height','dry_season_length','vpd_mean','ppt_mean','t_std','ppt_lte_100','agb'] #,'root_depth','ks','ppt_cv']
+#sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.65, see pickFeatures.py
 specDropList_fromNoTraitsCorrMat = ['species','lat','lon','dry_season_length','vpd_cv','canopy_height','ppt_mean','ppt_lte_100','agb','elevation']
 specDropList = ['species','lat','lon','dry_season_length','vpd_cv','canopy_height','ppt_mean','ppt_lte_100','agb']
 droppedVarsList = specDropList
 #'isohydricity','root_depth','p50','gpmax','c','g1'
 ### explore droppedVarsList = ['AI','isohydricity','p50','gpmax','c','lat','lon','species','restrictive_depth','lat','lon','slope','vpd_cv','t_mean','canopy_height','dry_season_length','ppt_mean','t_std','ppt_lte_100'] #,'root_depth','ks','ppt_cv']
-
-##droppedVarsList = ["species","thetas","AI","vpd_mean","vpd_cv","ppt_mean","ppt_cv","ndvi",'vpd_cv',"ppt_lte_100","dry_season_length","t_mean","t_std","lat","lon","Sr","Sbedrock"]
 df = cleanup_data(df, droppedVarsList)
 #df['vanGen_n'] = df['vanGen_n'].to_numpy() + 0.001*np.random.rand(len(df['vanGen_n']))
 #df['canopy_height'] = df['canopy_height'].to_numpy() + 0.01*np.random.rand(len(df['canopy_height']))
@@ -474,7 +466,6 @@ imp.sort_values(by=['importance'], ascending=True, inplace=True)
 #%% make plots
 ax = plot_corr_feats(df)
 axImp = plot_importance(imp)
-#plt.savefig('C:/repos/figures/importance_PWSDecThruMay.png')
 ax = plot_importance_by_category(imp)
 ax = plot_importance_plants(imp)
 x = plot_preds_actual(X_test, y_test, regrn, score)
@@ -507,6 +498,7 @@ df_wSpec.drop(noDataRows.index, inplace=True)
 df_w1SpecCol = df_wSpec.copy()
 df_wSpec = pd.get_dummies(df_wSpec, columns=['species'])
 X_test_wSpec, y_test_wSpec, regrn_wSpec, score_wSpec,  imp_wSpec = regress(df_wSpec, optHyperparam=False) 
+
 #aggregate species importance
 #just do manually for now. Probably some sort of cleverer way to do this but...
 specRows = [s for s in df_wSpec.columns.tolist() if 'species' in s]
