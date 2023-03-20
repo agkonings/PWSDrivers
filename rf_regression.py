@@ -134,6 +134,7 @@ def prettify_names(names):
                  "Sr": "RZ water storage",
                  "restrictive_depth": "Restricton depth",
                  "species":"species",
+                 "basal_area": "Basal area",
                  "species_64.0":"Species 64", "species_65.0":"Species 65",
                  "species_69.0":"Species 69", "species_106.0":"Species 106",
                  "species_108.0":"Species 108", "species_122.0":"Species 122",
@@ -432,12 +433,13 @@ plt.rcParams.update({'font.size': 18})
 
 
 #%% Load data
-dfPath = os.path.join(dirs.dir_data, 'inputFeatures_wgNATSGO.h5')
+dfPath = os.path.join(dirs.dir_data, 'inputFeatures_wgNATSGO_wBA.h5')
 pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_JunThruNov.tif'
 df =  load_data(dfPath, pwsPath)
 #sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.65, see pickFeatures.py
+#further added nlcd to drop list since doesn't really make sense if focusing on fia plots
 specDropList_fromNoTraitsCorrMat = ['species','lat','lon','dry_season_length','vpd_cv','canopy_height','ppt_mean','ppt_lte_100','agb','elevation']
-specDropList = ['species','lat','lon','dry_season_length','vpd_cv','canopy_height','ppt_mean','ppt_lte_100','agb']
+specDropList = ['nlcd','species','lat','lon','dry_season_length','vpd_cv','canopy_height','ppt_mean','ppt_lte_100','agb']
 droppedVarsList = specDropList
 #'isohydricity','root_depth','p50','gpmax','c','g1'
 ### explore droppedVarsList = ['AI','isohydricity','p50','gpmax','c','lat','lon','species','restrictive_depth','lat','lon','slope','vpd_cv','t_mean','canopy_height','dry_season_length','ppt_mean','t_std','ppt_lte_100'] #,'root_depth','ks','ppt_cv']
@@ -446,22 +448,8 @@ df = cleanup_data(df, droppedVarsList)
 #df['canopy_height'] = df['canopy_height'].to_numpy() + 0.01*np.random.rand(len(df['canopy_height']))
 
 
-#one-hot encode land cover into six categories
-df = pd.get_dummies(df, columns=['nlcd'])
-
 #%% Train rf
 X_test, y_test, regrn, score,  imp = regress(df, optHyperparam=False)  
- 
-#aggregate land cover importance
-#just do manually for now. Probably some sort of cleverer way to do this but...
-nlcdRows = [s for s in df.columns.tolist() if 'nlcd' in s]
-nlcdImpValue = 0
-for rw in nlcdRows:
-    nlcdImpValue += imp.at[rw,'importance']
-nlcdImp = {'importance': nlcdImpValue, 'color':'yellowgreen', 'symbol':'Land cover'}
-imp.loc['nlcd'] = nlcdImp
-imp.drop(nlcdRows, inplace=True)
-imp.sort_values(by=['importance'], ascending=True, inplace=True)
 
 #%% make plots
 ax = plot_corr_feats(df)
