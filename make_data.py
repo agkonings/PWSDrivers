@@ -128,13 +128,13 @@ def create_h5(store_path):
     
     #check that all files are now regridded properly with same geotransform and
     #shape. Note that land cover file has problems. Just don't load for now
-    #check_regridding(gtPWS, data['pws'].shape, featFiles, regridDir)    
+    check_regridding(gtPWS, data['pws'].shape, featFiles, regridDir)    
     
     keys = ['sand','clay','ks','bulk_density','theta_third_bar','isohydricity',\
         'root_depth','canopy_height','p50','gpmax', 'c','g1','nlcd',
         "elevation","aspect","slope","twi","dry_season_length","ndvi",\
             "vpd_mean","vpd_cv", "dist_to_water","agb","ppt_mean","ppt_cv",\
-        "t_mean","t_std","ppt_lte_100", "AI","Sr","AWS", "restrictive_depth", "species", "lon","lat"]
+        "t_mean","t_std","ppt_lte_100", "AI","Sr","AWS", "restrictive_depth", "species", "basal_area", "lon","lat"]
     
     array = np.zeros((len(keys), data['pws'].shape[0],data['pws'].shape[1])).astype('float')
     #array[0] = data['pws']
@@ -176,15 +176,18 @@ def create_h5(store_path):
     array[29] = get_value( os.path.join(regridDir, 'Sr_2020_unmasked_4km_westernUS.tif'), 1)    
     array[30] = get_value( os.path.join(regridDir, 'AWS_0to150cm_4km_westernUS.tif'), 1)
     array[31] = get_value( os.path.join(regridDir, 'RestrictiveLayerDepth_resampled_clipped.tif'), 1)                
-    array[32] = get_value( 'C:/repos/data/FIADomSpecies.tif', 1)        
-    array[33] = lons
-    array[34] = lats  
+    array[32] = get_value( 'C:/repos/data/FIADomSpecies.tif', 1)
+    array[33] = get_value( os.path.join(regridDir, 'FIABasalAreaAc.tif'), 1)        
+    array[34] = lons
+    array[35] = lats  
     
     
     ds = None
     
     df = create_df(array,keys)
     #df.dropna(subset = ["pws"], inplace = True)
+    print(df.describe())
+    print(df.head())
     
     df.describe()
     df.loc[df['sand']<-1] = np.nan
@@ -198,6 +201,9 @@ def create_h5(store_path):
     df.loc[df['aspect']>2e3] = np.nan
     df.loc[df['twi']>2e3] = np.nan
     df.loc[df['restrictive_depth']>1000] = np.nan
+    df.loc[df['restrictive_depth']<0] = np.nan
+    df.loc[df['theta_third_bar']<0] = np.nan
+    df.loc[df['AWS']<0] = np.nan
     
     #plot map of where there is data
     #first load pws to get grid size
@@ -283,7 +289,7 @@ def plot_heatmap(df):
 
 def main():
     #%% make and save dataframe:
-    store_path = os.path.join(dirs.dir_data, 'inputFeatures_wgNATSGO.h5')
+    store_path = os.path.join(dirs.dir_data, 'inputFeatures_wgNATSGO_wBA.h5')
     create_h5(store_path)
     
     #%% Load h5 as type
@@ -295,8 +301,6 @@ def main():
     df.columns = df.columns.astype(str)    
     df.head()
     
-    #%% Plot heatmap
-    plot_heatmap(df)
         
 if __name__ == "__main__":
     main()
