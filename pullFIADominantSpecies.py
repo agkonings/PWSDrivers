@@ -154,6 +154,31 @@ BALiveAcMap[indY, indX] = dominantLocs['BALiveAc']
 BALIVEMap = np.zeros(pws.shape) * np.nan
 BALIVEMap[indY, indX] = dominantLocs['BALIVE']
 
+#count how many pixels
+BAMapCopy = BALiveAcMap.copy()
+BAMapCopy[np.isnan(pws)] = np.nan
+nDomFIAPix = np.sum(~np.isnan(BAMapCopy))
+print('dominance threshold % BA at each site is : ' + str(dominantThresh) )
+print('# of PWS pixels with FIA pllots is : ' + str(nDomFIAPix) )
+
+#calculate how many FIA plots total across US
+allFIAMap = np.zeros(pws.shape) * np.nan
+allIndX = np.floor( (combdf['LON']-gt[0])/gt[1] ).to_numpy().astype(int)
+allIndY = np.floor( (combdf['LAT']-gt[3])/gt[5] ).to_numpy().astype(int)
+n1, n2 = pws.shape
+#this has pixels in American Samoa and the like. Remove those
+allMask = np.ones(allIndX.shape, dtype=bool)
+allMask[allIndX < 0] = False
+allMask[allIndX >= n2] = False
+allMask[allIndY < 0] = False
+allMask[allIndY > n1] = False
+allIndX = allIndX[allMask]
+allIndY = allIndY[allMask]
+allFIAMap[allIndY, allIndX] = combdf['BALiveAc'][allMask]
+nFIAPix = np.sum(~np.isnan(allFIAMap))
+print('# of FIA plots in Western US is : ' + str(nFIAPix) )
+error
+
 #save geotiff
 driver = gdal.GetDriverByName('GTiff')
 output_file = 'FIADomSpecies.tif'
@@ -178,6 +203,8 @@ dataset.SetGeoTransform(gt)
 dataset.GetRasterBand(1).WriteArray(BALIVEMap)
 dataset.FlushCache()#Writetodisk.
 dataset=None
+
+
 
 '''Now repeat with P50 file to make sure gets fewer points
 
