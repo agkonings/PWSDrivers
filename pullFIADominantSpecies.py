@@ -177,7 +177,6 @@ allIndY = allIndY[allMask]
 allFIAMap[allIndY, allIndX] = combdf['BALiveAc'][allMask]
 nFIAPix = np.sum(~np.isnan(allFIAMap))
 print('# of FIA plots in Western US is : ' + str(nFIAPix) )
-error
 
 #save geotiff
 driver = gdal.GetDriverByName('GTiff')
