@@ -91,6 +91,7 @@ def get_categories_and_colors():
 
 def prettify_names(names):
     new_names = {"ks":"K$_{s,max}$",
+                 "basal_area":"Basal area",
                  "pws": "PWS",
                  "ndvi":"NDVI",
                  "vpd_mean":"VPD$_{mean}$",
@@ -145,35 +146,7 @@ def prettify_names(names):
                  }
     return [new_names[key] for key in names]
         
-def plot_corr_feats(df):
-    '''
-    Plot of feature correlation to figure out what to drop
-    takes in dataframe
-    returns axis handle
 
-    '''
-    X = df.drop("pws",axis = 1)
-    corrMat = X.corr()
-    r2bcmap = sns.color_palette("vlag", as_cmap=True)
-    sns.heatmap(corrMat, 
-            xticklabels=prettify_names(corrMat.columns.values),
-            yticklabels=prettify_names(corrMat.columns.values),
-            cmap = r2bcmap, vmin=-0.75, vmax=0.75)
-
-def plot_preds_actual(X_test, y_test, regrn, score):
-    """
-    Plot of predictions vs actual data
-    """
-    y_hat =regrn.predict(X_test)
-    
-    fig, ax = plt.subplots(figsize = (3,3))
-    ax.scatter(y_hat, y_test, s = 1, alpha = 0.05, color='k')
-    ax.set_xlabel("Predicted PWS", fontsize = 18)
-    ax.set_ylabel("Actual PWS", fontsize = 18)
-    ax.set_xlim(0,1.6)
-    ax.set_ylim(0,1.6)
-    ax.annotate(f"R$^2$={score:0.2f}", (0.1,0.9),xycoords = "axes fraction", ha = "left")
-    return ax    
     
     
 plt.rcParams.update({'font.size': 18})
@@ -189,10 +162,46 @@ specDropList = ['lat','lon','dry_season_length','vpd_cv','canopy_height','ppt_me
 droppedVarsList = specDropList
 df = cleanup_data(df, droppedVarsList)
 
+'''
+#create dictionary with species names
+#finish this based on manual look-up in FIADB user guide and what species pass the dominance test
+new_names = {"11": "Pacific silver fir", "15": "white fir", "17": "grand fir", 
+             "19": "subalpine fir", "20": "California red fir", "21": "Shasta red fir",
+             "42": "Alska yellow-cedar", "51": "Arizona cypress", "55": "Sargent's cypress", 
+             "58": "Pinchot juniper", "59": "redberry juniper", "61": "Ashe juniper", "62": "California juniper", 
+             "63": "alligator juniper", "66": "Rocky Mountain juniper", "68": "eastern redcedar", "73": "western larch",
+             "81": "incense cedar", "93": "Engelmann spruce", "96": "blue spruce", "101": "whitebark pine", 
+             "102": "Rocky Mountain bristlecone pine", "103": "knobcone pine", "104": "foxtail pine", "109": "Coulter pine",
+             "110": "shortleaf pine", "111": "slash pine", "113": "limber pine", "114": "southwestern white pine", "116": "Jeffrey pine", "117": "sugar pine", "119": "western whit epine", "121": "longleaf pine", "127": "gray pine", "131": "loblolly pine", 
+             "133": "singleleaf pinyon", "134": "border pinyon", "140": "Mexican pinyon pine", "141": "papershell pinyon pine", "142": "Great Basin bristlecone pine", "143": "Arizona pinyon pine", "201": "bigcone Douglas-Fir", "212": "giant sequoia", 
+             "221": "baldcypress", "242": "western redcedar", "263": "western hemlock", "264": "mountain hemlock", "303": "sweet acacia",
+             "312": "bigleaf maple", "313": "boxelder", "321": "Rocky Mountain maple", "42": "", "42": "",
+             "42": "", "42": "", "42": "", "42": "", "42": "",
+             "42": "", "42": "", "42": "", "42": "", "42": "",
+             "42": "", "42": "", "42": "", "42": "", "42": "",
+             "42": "", "42": "", "42": "", "42": "", "42": "",
+             "42": "", "42": "", "42": "", "42": "", "42": "",
+             "42": "", "42": "", "42": "", "42": "", "42": "",
+             "42": "", "42": "", "42": "", "42": "", "42": "",
+             "42": "", "42": "", "42": "", "42": "", "42": "",
+             "42": "", "42": "", "42": "", "42": "", "42": "",
+             
+             "64": "western juniper",
+             "65": "Utah juniper",
+             "69": "oneseed juniper",
+             "106": "Pinyon pine",
+             "108": "Lodgepole pine",
+             "122": "Ponderosa pine",
+             "202": "Douglas fir",
+             "756": "Honey mesquite" 
+             }
+'''
+
 #common species list hand-calculated separately based on most entries in species column
 #shorter list gets about 0.03 better r2 because have more data, so use that as in between point
 #between enough data to do well and not too many columns
-commonSpecList = {65, 69, 122, 202, 756, 64, 106, 108}
+commonSpecList = {64, 65, 69, 106, 108, 122, 202, 756}
+
 
 #filter so that only data with most common species are kept
 noDataRows = df.loc[~df.species.isin(commonSpecList)]
@@ -208,13 +217,13 @@ for var in df.columns:
     fig, ax = plt.subplots()
     for thisSpec in commonSpecList:
         if var == 'AI':
-            binEdges = np.concatenate((np.arange(0,1,0.1), np.arange(1,3.2,0.2)), axis=0)
+            binEdges = np.concatenate((np.arange(0,1.6,0.1), np.arange(1.7,2.6,0.2)), axis=0)
             count[thisSpec], binEdges = np.histogram(df[var].loc[df.species==thisSpec], binEdges)    
         else:
             count[thisSpec], binEdges = np.histogram(df[var].loc[df.species==thisSpec], 20)    
         binCenters[thisSpec] = ( binEdges[0:-1] + binEdges[1:] ) / 2
     plt.xlabel( prettify_names([var])[0] )
     plt.plot(binCenters, count) 
-    #plt.legend(['Western junip', 'Utah junip','Oneseed junip','Pinyon pine','Lodgepole','Ponderosa pine','Douglas fir','Honey mesquite'])
+    plt.legend(['Western junip', 'Utah junip','Oneseed junip','Pinyon pine','Lodgepole','Ponderosa pine','Douglas fir','Honey mesquite'])
     
  
