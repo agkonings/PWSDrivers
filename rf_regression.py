@@ -190,7 +190,7 @@ def regress(df, optHyperparam=False):
                            
     #can get highest with 3 leaves, 120 nEst, decrease 1e-8, but that seems like low number of leaves
     #old configuration was leaves = 6, decrease 1e-6, nEst = 50
-    leaves = 3 #4
+    leaves = 4
     decrease = 1e-8
     depth = 15 #25
     nEst = 120
@@ -434,7 +434,7 @@ plt.rcParams.update({'font.size': 18})
 
 #%% Load data
 dfPath = os.path.join(dirs.dir_data, 'inputFeatures_wgNATSGO_wBA.h5')
-pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_JunThruNov.tif'
+pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas.tif'
 df =  load_data(dfPath, pwsPath)
 #sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.65, see pickFeatures.py
 #further added nlcd to drop list since doesn't really make sense if focusing on fia plots
@@ -471,22 +471,11 @@ and one run noSpec whre don't have species, but have same filterlist'''
 #commonSpecList = {65, 69, 122, 202, 756, 64, 106, 108, 133, 746, 814}
 commonSpecList = {65, 69, 122, 202, 756, 64, 106, 108}
 
-#first calculate with species (one-hot encoded)
-#do this slightly compliated way so that keep same number of points for comparison
-#despite some points having non-common species info
-print('with species one-hot encoded') 
 droppedVarsList.remove('species') #so don't drop from list
 df_wSpec =  load_data(dfPath, pwsPath)
 df_wSpec = cleanup_data(df_wSpec, droppedVarsList)
-#df['vanGen_n'] = df['vanGen_n'].to_numpy() + 0.001*np.random.rand(len(df['vanGen_n']))
-#df['canopy_height'] = df['canopy_height'].to_numpy() + 0.01*np.random.rand(len(df['canopy_height']))
-#filter so that only data with most common species are kept
-noDataRows = df_wSpec.loc[~df_wSpec.species.isin(commonSpecList)]
-df_wSpec.drop(noDataRows.index, inplace=True)
-df_w1SpecCol = df_wSpec.copy()
-df_wSpec = pd.get_dummies(df_wSpec, columns=['species'])
-X_test_wSpec, y_test_wSpec, regrn_wSpec, score_wSpec,  imp_wSpec = regress(df_wSpec, optHyperparam=False) 
 
+'''
 #aggregate species importance
 #just do manually for now. Probably some sort of cleverer way to do this but...
 specRows = [s for s in df_wSpec.columns.tolist() if 'species' in s]
@@ -503,7 +492,7 @@ ax = plot_importance_plants(imp_wSpec)
 x = plot_preds_actual(X_test_wSpec, y_test_wSpec, regrn_wSpec, score_wSpec)
 
 #instead, for each unique species, calculate a predicted value
-'''print('predictive ability with all species') 
+print('predictive ability with all species') 
 pwsVec = df_w1SpecCol['pws']
 specVec = df_w1SpecCol['species']
 pwsPred = np.zeros(pwsVec.shape)
@@ -517,28 +506,31 @@ for specCode in np.unique(df_wSpec['species']):
 resPred = pwsVec - pwsPred
 SSres = np.sum(resPred**2)
 SStot = np.sum( (pwsVec - np.mean(pwsVec))**2 ) #total sum of squares
-coeffDeterm = 1 - SSres/SStot'''
+coeffDeterm = 1 - SSres/SStot
+'''
 
-print('predictive ability with top species') 
-pwsVec = df_w1SpecCol['pws']
-specVec = df_w1SpecCol['species']
+print('predictive ability with species alone') 
+pwsVec = df_wSpec['pws']
+specVec = df_wSpec['species']
 pwsPred = np.zeros(pwsVec.shape)
-specNumbers = {}
-for specCode in np.unique(df_w1SpecCol['species']):
-    specNumbers[specCode]=np.sum(specVec == specCode)
-    #differentiating (obs_i-X)^2 shows that optimal predictor is mean of each cat
-    thisMean = np.mean( pwsVec[specVec == specCode] )
-    pwsPred[specVec == specCode] = thisMean
+specCount = df_wSpec['species'].value_counts()
+minFreq = 0
+for specCode in np.unique(df_wSpec['species']):
+    if specCount[specCode] > minFreq:
+        #differentiating (obs_i-X)^2 shows that optimal predictor is mean of each cat
+        thisMean = np.mean( pwsVec[specVec == specCode] )
+        pwsPred[specVec == specCode] = thisMean
+        
 
+#next line is hack to make sure species with less than minFreq occurences don't count
+pwsVec[pwsPred == 0] = 0
 resPred = pwsVec - pwsPred
 SSres = np.sum(resPred**2)
 SStot = np.sum( (pwsVec - np.mean(pwsVec))**2 ) #total sum of squares
 coeffDeterm = 1 - SSres/SStot
 
 print('amount explained with ONLY species info ' + str(coeffDeterm))
-print('fraction explained by species' + str(coeffDeterm/score_wSpec))
-
-AIExp = spearmanr(df_w1SpecCol['pws'], df_w1SpecCol['AI'])
+print('fraction explained by species' + str(coeffDeterm/score))
 
 '''NBcoeffDeterm was about 0.15 with all species, now 0.12 with top species'
 
