@@ -156,11 +156,14 @@ plt.rcParams.update({'font.size': 18})
 dfPath = os.path.join(dirs.dir_data, 'inputFeatures_wgNATSGO_wBA.h5')
 pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_JunThruNov.tif'
 df =  load_data(dfPath, pwsPath)
-#sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.5, see pickFeatures.py
-#droppedVarsList = ['lat','lon','species','restrictive_depth','lat','lon','slope','vpd_cv','t_mean','canopy_height','dry_season_length','vpd_mean','ppt_mean','t_std','ppt_lte_100','agb'] #,'root_depth','ks','ppt_cv']
-specDropList = ['lat','lon','dry_season_length','vpd_cv','canopy_height','ppt_mean','ppt_lte_100','agb']
+fPath = os.path.join(dirs.dir_data, 'inputFeatures_wgNATSGO_wBA.h5')
+pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas.tif'
+df =  load_data(dfPath, pwsPath)
+specDropList = ['nlcd','lat','lon','dry_season_length','vpd_cv','canopy_height','ppt_mean','ppt_lte_100','agb']
 droppedVarsList = specDropList
 df = cleanup_data(df, droppedVarsList)
+
+df['species'].count_values()
 
 '''
 #create dictionary with species names
