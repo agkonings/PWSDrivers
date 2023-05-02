@@ -438,14 +438,10 @@ pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas.tif
 df =  load_data(dfPath, pwsPath)
 #sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.65, see pickFeatures.py
 #further added nlcd to drop list since doesn't really make sense if focusing on fia plots
-specDropList_fromNoTraitsCorrMat = ['species','lat','lon','dry_season_length','vpd_cv','canopy_height','ppt_mean','ppt_lte_100','agb','elevation']
-specDropList = ['nlcd','species','lat','lon','dry_season_length','vpd_cv','canopy_height','ppt_mean','ppt_lte_100','agb']
+#specDropList = ['nlcd','species','lat','lon','dry_season_length','vpd_cv','canopy_height','ppt_mean','ppt_lte_100','agb']
+specDropList = ['dry_season_length','t_mean','AI','ppt_lte_100','elevation','species','lat','lon']
 droppedVarsList = specDropList
-#'isohydricity','root_depth','p50','gpmax','c','g1'
-### explore droppedVarsList = ['AI','isohydricity','p50','gpmax','c','lat','lon','species','restrictive_depth','lat','lon','slope','vpd_cv','t_mean','canopy_height','dry_season_length','ppt_mean','t_std','ppt_lte_100'] #,'root_depth','ks','ppt_cv']
 df = cleanup_data(df, droppedVarsList)
-#df['vanGen_n'] = df['vanGen_n'].to_numpy() + 0.001*np.random.rand(len(df['vanGen_n']))
-#df['canopy_height'] = df['canopy_height'].to_numpy() + 0.01*np.random.rand(len(df['canopy_height']))
 
 
 #%% Train rf
@@ -465,56 +461,18 @@ top 10 species one-hot-encoded
 so want one run wSpec where have one-hot-encoded, don't drop species
 and one run noSpec whre don't have species, but have same filterlist'''
 
-#common species list hand-calculated separately based on most entries in species column
-#shorter list gets about 0.03 better r2 because have more data, so use that as in between point
-#between enough data to do well and not too many columns
-#commonSpecList = {65, 69, 122, 202, 756, 64, 106, 108, 133, 746, 814}
-commonSpecList = {65, 69, 122, 202, 756, 64, 106, 108}
 
 droppedVarsList.remove('species') #so don't drop from list
 df_wSpec =  load_data(dfPath, pwsPath)
 df_wSpec = cleanup_data(df_wSpec, droppedVarsList)
 
-'''
-#aggregate species importance
-#just do manually for now. Probably some sort of cleverer way to do this but...
-specRows = [s for s in df_wSpec.columns.tolist() if 'species' in s]
-specImpValue = 0
-for row in specRows:
-    specImpValue += imp_wSpec.at[row,'importance']
-specImp = {'importance': specImpValue, 'color':'yellowgreen', 'symbol':'Species'}
-imp_wSpec.loc['species'] = specImp
-imp_wSpec.drop(specRows, inplace=True)
-imp_wSpec.sort_values(by=['importance'], ascending=True, inplace=True)
-ax = plot_importance(imp_wSpec)
-ax = plot_importance_by_category(imp_wSpec)
-ax = plot_importance_plants(imp_wSpec)
-x = plot_preds_actual(X_test_wSpec, y_test_wSpec, regrn_wSpec, score_wSpec)
-
-#instead, for each unique species, calculate a predicted value
-print('predictive ability with all species') 
-pwsVec = df_w1SpecCol['pws']
-specVec = df_w1SpecCol['species']
-pwsPred = np.zeros(pwsVec.shape)
-specNumbers = {}
-for specCode in np.unique(df_wSpec['species']):
-    specNumbers[specCode]=np.sum(specVec == specCode)
-    #differentiating (obs_i-X)^2 shows that optimal predictor is mean of each cat
-    thisMean = np.mean( pwsVec[specVec == specCode] )
-    pwsPred[specVec == specCode] = thisMean
-
-resPred = pwsVec - pwsPred
-SSres = np.sum(resPred**2)
-SStot = np.sum( (pwsVec - np.mean(pwsVec))**2 ) #total sum of squares
-coeffDeterm = 1 - SSres/SStot
-'''
 
 print('predictive ability with species alone') 
 pwsVec = df_wSpec['pws']
 specVec = df_wSpec['species']
 pwsPred = np.zeros(pwsVec.shape)
 specCount = df_wSpec['species'].value_counts()
-minFreq = 0
+minFreq = 2
 for specCode in np.unique(df_wSpec['species']):
     if specCount[specCode] > minFreq:
         #differentiating (obs_i-X)^2 shows that optimal predictor is mean of each cat

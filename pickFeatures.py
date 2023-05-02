@@ -50,7 +50,7 @@ def load_data(dfPath, pwsPath):
     
     return df
 
-dfPath = os.path.join('C:/repos/data/inputFeatures_wgNATSGO.h5')
+dfPath = os.path.join('C:/repos/data/inputFeatures_wgNATSGO_wBA.h5')
 pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_JunThruNov.tif'
 df =  load_data(dfPath, pwsPath)
 
@@ -86,19 +86,13 @@ dist_to_water
 
 '''
 want to repeat with looking at what is cross-correlated with speices
-and where have data that overlaps with species (e.g. not places where have species
-                                                but not triats)
+and where have data that overlaps with species 
 '''
-commonSpecList = {65, 69, 122, 202, 756, 64, 106, 108}
 
-#first calculate with species (one-hot encoded)
-#do this slightly compliated way so that keep same number of points for comparison
-#despite some points having non-common species info
+#calculate with all dominant species
 df_wSpec =  load_data(dfPath, pwsPath)
-#df_wSpec.drop(['isohydricity','root_depth','p50','gpmax','c','g1','lat','lon'], axis = 1, inplace=True)
-#keep only rows with most common species
-noDataRows = df_wSpec.loc[~df_wSpec.species.isin(commonSpecList)]
-df_wSpec.drop(noDataRows.index, inplace=True)
+df_wSpec.drop(['elevation','isohydricity','root_depth','p50','gpmax','c','g1','species','lat','lon'], axis = 1, inplace=True)
 
-corrMatSpec = df.corr()
-#so specDropList = ['isohydricity','root_depth','p50','gpmax','c','g1','lat','lon','dry_season_length','vpd_cv','canopy_height','ppt_mean','ppt_lte_100','agb','elevation']
+corrMatSpec = df_wSpec.corr()
+#manually investigated as long as R<0.75
+specDropList = ['dry_season_length','t_mean','AI','ppt_lte_100','elevation','species','lat','lon']
