@@ -140,7 +140,8 @@ def prettify_names(names):
                  "species_108.0":"Species 108", "species_122.0":"Species 122",
                  "species_133.0":"Species 133", "species_202.0":"Species 202",
                  "species_746.0":"Species 746", "species_756.0":"Species 756",
-                 "species_814.0":"Species 814"
+                 "species_814.0":"Species 814",
+                 "HAND":"HAND"
                  }
     return [new_names[key] for key in names]
     

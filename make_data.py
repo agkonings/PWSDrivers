@@ -134,7 +134,7 @@ def create_h5(store_path):
         'root_depth','canopy_height','p50','gpmax', 'c','g1','nlcd',
         "elevation","aspect","slope","twi","dry_season_length","ndvi",\
             "vpd_mean","vpd_cv", "dist_to_water","agb","ppt_mean","ppt_cv",\
-        "t_mean","t_std","ppt_lte_100", "AI","Sr","AWS", "restrictive_depth", "species", "basal_area", "lon","lat"]
+        "t_mean","t_std","ppt_lte_100", "AI","Sr","AWS", "restrictive_depth", "species", "basal_area", "lon","lat","HAND"]
     
     array = np.zeros((len(keys), data['pws'].shape[0],data['pws'].shape[1])).astype('float')
     #array[0] = data['pws']
@@ -157,7 +157,8 @@ def create_h5(store_path):
     array[13] = get_value( os.path.join(regridDir, 'usa_dem.tif'), 1)    
     array[14] = get_value( os.path.join(regridDir, 'usa_aspect_wgs1984_clip.tif'), 1)    
     array[15] = get_value( os.path.join(regridDir, 'usa_slope_project.tif'), 1)    
-    array[16] = get_value( os.path.join(regridDir, 'twi.tif'), 1)    
+    #array[16] = get_value( os.path.join(regridDir, 'twi.tif'), 1)    
+    array[16] = get_value( os.path.join(regridDir, 'twi_epsg4326_4000m_merithydro.tif'), 1)    
     array[17] = get_value( os.path.join(regridDir, 'fireSeasonLength.tif'), 1)    
     array[18] = get_value( os.path.join(regridDir, 'ndvi_mean.tif'), 1)    
     array[19] = get_value( os.path.join(regridDir, 'vpd_mean.tif'), 1)    
@@ -180,6 +181,7 @@ def create_h5(store_path):
     array[33] = get_value( os.path.join(regridDir, 'FIABasalAreaAc.tif'), 1)        
     array[34] = lons
     array[35] = lats  
+    array[36] = get_value( os.path.join(regridDir, 'hand_epsg4326_4000m_merithydro.tif'), 1)    
     
     
     ds = None
@@ -289,7 +291,7 @@ def plot_heatmap(df):
 
 def main():
     #%% make and save dataframe:
-    store_path = os.path.join(dirs.dir_data, 'inputFeatures_wgNATSGO_wBA.h5')
+    store_path = os.path.join(dirs.dir_data, 'inputFeatures_wgNATSGO_wBA_wHAND.h5')
     create_h5(store_path)
     
     #%% Load h5 as type
