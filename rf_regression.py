@@ -468,7 +468,8 @@ df_wSpec =  load_data(dfPath, pwsPath)
 df_wSpec = cleanup_data(df_wSpec, droppedVarsList)
 
 
-print('predictive ability with species alone') 
+print('predictive ability with species alone')
+print( 'number of pixels studied: ' + str(len(df_wSpec)) ) 
 pwsVec = df_wSpec['pws']
 specVec = df_wSpec['species']
 pwsPred = np.zeros(pwsVec.shape)
