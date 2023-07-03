@@ -3,13 +3,13 @@
 Created on Thu Jun 30 16:08:51 2022
 
 @author: konings
-TODO CHECK 0.7!!!!!!!!!!!!!!!
  """
 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from osgeo import gdal
+import pickle
 
 #notes: seem to have about 138,000 siteID unique values according to quick'n dirty calcs
 #that's roguhly the same number of entries in FIA_traits_Alex.
@@ -101,6 +101,10 @@ for unSite in combdf['siteID'].unique():
                 dominantLocs = pd.concat([dominantLocs, sitedf[BARat>dominantThresh]])
             else:
                 noGoodCnt += 1
+#store as pickle file for use elsewhere in mapping/exploring the data sources
+pickleLoc = '../data/dominantLocs.pkl'
+with open(pickleLoc, 'wb') as file:
+    pickle.dump(dominantLocs, file)
                 
 #with COND_CN, leads to 138, 172 dominantLocs
 #of which there are 138,070 unique site IDs (so 100 plots within 4 km of each other)
