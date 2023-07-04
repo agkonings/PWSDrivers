@@ -15,7 +15,7 @@ import rasterio
 from rasterio.plot import plotting_extent, show
 import matplotlib.pyplot as plt
 
-def plot_map(arrayToPlot, pwsExtent, stateBorders, title, vmin = None, vmax = None, clrmap = 'YlGnBu', savePath = None):
+def plot_map(arrayToPlot, pwsExtent, stateBorders, title = None, vmin = None, vmax = None, clrmap = 'YlGnBu', savePath = None):
     '''make map with state borders'''
     
     #preliminary calculatios
@@ -30,7 +30,7 @@ def plot_map(arrayToPlot, pwsExtent, stateBorders, title, vmin = None, vmax = No
         ax = rasterio.plot.show(arrayToPlot, interpolation='nearest', extent=pwsExtent, ax=ax, cmap=clrmap)
     stateBorders[stateBorders['NAME'].isin(statesList)].boundary.plot(ax=ax, edgecolor='black', linewidth=0.5) 
     im = ax.get_images()[0]
-    cbar = plt.colorbar(im, ax=ax) #ticks=range(0,6)
+    #cbar = plt.colorbar(im, ax=ax) #ticks=range(0,6)
     #cbar.ax.set_xticklabels([ 'Deciduous','Evergreen','Mixed','Shrub','Grass', 'Pasture'])
     plt.title(title)
     ax.axis('off')
@@ -75,22 +75,25 @@ speciesMap = getRaster(speciesPath)
 #mask areas outside of PWS states
 BALiveMap[np.isnan(pwsMap)] = np.nan
 BAMap[np.isnan(pwsMap)] = np.nan
-speciesMap[np.isnan(speciesMap)] = np.nan
+speciesMap[np.isnan(pwsMap)] = np.nan
 
 plot_map(BAMap, pwsExtent, states, 'Basal Area, all species', vmin=0, vmax=250)
 plot_map(BALiveMap, pwsExtent, states, 'Basal Area, v2, all species', vmin=0, vmax=250)
-print(np.sum(~np.isnan(BAMap)))
 
 #mask areas where dominant speices is not one of the six most commmon
 #slow nad not pythonic but whatever
 commonSpecList = {65, 69, 122, 202, 756, 64, 106, 108}
+cntr = 0
 for spec in np.unique(speciesMap):
     if spec not in commonSpecList:
         speciesMap[speciesMap==spec] = np.nan
-np.unique(speciesMap)
+    else:
+        speciesMap[speciesMap==spec] = cntr
+        cntr += 1
 BAMap[np.isnan(speciesMap)] = np.nan
 BALiveMap[np.isnan(speciesMap)] = np.nan
 
+plot_map(speciesMap, pwsExtent, states, clrmap='Dark2', vmin=0, vmax=8)
 plot_map(BAMap, pwsExtent, states, 'Basal Area', vmin=0, vmax=350)
 plot_map(BALiveMap, pwsExtent, states, 'Basal Area, v2', vmin=0, vmax=350)
 print(np.sum(~np.isnan(BAMap)))
