@@ -440,14 +440,25 @@ df_wSpec =  load_data(dfPath, pwsPath)
 #sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.75, see pickFeatures.py
 #further added nlcd to drop list since doesn't really make sense if focusing on fia plots
 specDropList = ['lat','lon','dry_season_length','t_mean','AI','ppt_lte_100','elevation','nlcd']
-cleanlinessDropList = ['aspect','restrictive_depth','canopy_height','clay','sand','Sr','g1','p50','gpmax','c','bulk_density','agb']
+#cleanlinessDropList = ['aspect','restrictive_depth','canopy_height','clay','sand','Sr','g1','p50','gpmax','c','bulk_density','agb']
+cleanlinessDropList = ['aspect','restrictive_depth','canopy_height','clay','sand','Sr','root_depth','c','bulk_density','agb']
 droppedVarsList = specDropList + cleanlinessDropList
 df_wSpec = cleanup_data(df_wSpec, droppedVarsList)
+df_noSpec = df_wSpec.drop(columns='species', inplace=False)
+
+
+#seems to be some weird issue where RF model and importance is possibly affected by number of unique pixels in each dataset
+#add random noise to avoid that to be safe
+uniqueCnt = df_noSpec.nunique()
+for var in df_noSpec.columns:
+    if uniqueCnt[var] < 10000:
+        reasonableNoise = 1e-5*df_noSpec[var].median()
+        df_noSpec[var] = df_noSpec[var] + np.random.normal(0, reasonableNoise, len(df_noSpec))
+
 
 '''
 now actually train model on everything except the species
 '''
-df_noSpec = df_wSpec.drop(columns='species', inplace=False)
 # Train rf
 X_test, y_test, regrn, score,  imp = regress(df_noSpec, optHyperparam=False)  
 # make plots
