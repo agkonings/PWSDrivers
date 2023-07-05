@@ -81,7 +81,7 @@ def get_categories_and_colors():
     yellow = "khaki"
     purple = "magenta"
     
-    plant = ['canopy_height', "agb",'ndvi', "nlcd","species",'isohydricity', 'root_depth', 'p50', 'gpmax', 'c', 'g1']
+    plant = ['basal_area','canopy_height', "agb",'ndvi', "nlcd","species",'isohydricity', 'root_depth', 'p50', 'gpmax', 'c', 'g1']
     soil = ['clay', 'sand','silt','thetas', 'ks', 'vanGen_n','Sr','Sbedrock','bulk_density','theta_third_bar','AWS']
     climate = [ 'dry_season_length', 'vpd_mean', 'vpd_cv',"ppt_mean","ppt_cv","t_mean","t_std","ppt_lte_100","AI"]
     topo = ['elevation', 'aspect', 'slope', 'twi',"dist_to_water"]
@@ -436,39 +436,34 @@ plt.rcParams.update({'font.size': 18})
 #%% Load data
 dfPath = os.path.join(dirs.dir_data, 'inputFeatures_wgNATSGO_wBA.h5')
 pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas.tif'
-df =  load_data(dfPath, pwsPath)
-#sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.65, see pickFeatures.py
+df_wSpec =  load_data(dfPath, pwsPath)
+#sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.75, see pickFeatures.py
 #further added nlcd to drop list since doesn't really make sense if focusing on fia plots
-#specDropList = ['nlcd','species','lat','lon','dry_season_length','vpd_cv','canopy_height','ppt_mean','ppt_lte_100','agb']
-specDropList = ['lat','lon','dry_season_length','t_mean','AI','ppt_lte_100','elevation','species','nlcd']
-cleanlinessDropList = ['basal_area','aspect','restrictive_depth','canopy_height','clay','sand','Sr','g1','p50','gpmax','c','bulk_density','agb']
+specDropList = ['lat','lon','dry_season_length','t_mean','AI','ppt_lte_100','elevation','nlcd']
+cleanlinessDropList = ['aspect','restrictive_depth','canopy_height','clay','sand','Sr','g1','p50','gpmax','c','bulk_density','agb']
 droppedVarsList = specDropList + cleanlinessDropList
-df = cleanup_data(df, droppedVarsList)
+df_wSpec = cleanup_data(df_wSpec, droppedVarsList)
 
-
-#%% Train rf
-X_test, y_test, regrn, score,  imp = regress(df, optHyperparam=False)  
-
-#%% make plots
-ax = plot_corr_feats(df)
+'''
+now actually train model on everything except the species
+'''
+df_noSpec = df_wSpec.drop(columns='species', inplace=False)
+# Train rf
+X_test, y_test, regrn, score,  imp = regress(df_noSpec, optHyperparam=False)  
+# make plots
+ax = plot_corr_feats(df_noSpec)
 axImp = plot_importance(imp)
 ax = plot_importance_by_category(imp)
 ax = plot_importance_plants(imp)
 x = plot_preds_actual(X_test, y_test, regrn, score)
 
-
-print('now doing species power calculations')    
-'''now check how explanatory power compares if don't have species vs. if have 
+'''
+now check how explanatory power compares if don't have species vs. if have 
 top 10 species one-hot-encoded
 so want one run wSpec where have one-hot-encoded, don't drop species
-and one run noSpec whre don't have species, but have same filterlist'''
-
-
-droppedVarsList.remove('species') #so don't drop from list
-df_wSpec =  load_data(dfPath, pwsPath)
-df_wSpec = cleanup_data(df_wSpec, droppedVarsList)
-
-
+and one run noSpec whre don't have species, but have same filterlist
+'''
+print('now doing species power calculations')    
 print('predictive ability with species alone')
 print( 'number of pixels studied: ' + str(len(df_wSpec)) ) 
 pwsVec = df_wSpec['pws']
