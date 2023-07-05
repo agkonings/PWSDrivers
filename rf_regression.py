@@ -90,7 +90,7 @@ def get_categories_and_colors():
 
 def prettify_names(names):
     new_names = {"ks":"K$_{s,max}$",
-                 "ndvi":"NDVI",
+                 "ndvi":"$NDVI_{mean}$",
                  "vpd_mean":"VPD$_{mean}$",
                  "vpd_cv":"VPD$_{CV}$",
                  "thetas":"Soil porosity",
@@ -193,7 +193,7 @@ def regress(df, optHyperparam=False):
     #old configuration was leaves = 6, decrease 1e-6, nEst = 50
     leaves = 4
     decrease = 1e-8
-    depth = 15 #25
+    depth = 25 #25
     nEst = 120
     # construct rf model
     regrn = sklearn.ensemble.RandomForestRegressor(min_samples_leaf=leaves, max_depth=depth, \
@@ -440,8 +440,9 @@ df =  load_data(dfPath, pwsPath)
 #sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.65, see pickFeatures.py
 #further added nlcd to drop list since doesn't really make sense if focusing on fia plots
 #specDropList = ['nlcd','species','lat','lon','dry_season_length','vpd_cv','canopy_height','ppt_mean','ppt_lte_100','agb']
-specDropList = ['dry_season_length','t_mean','AI','ppt_lte_100','elevation','species','lat','lon']
-droppedVarsList = specDropList
+specDropList = ['lat','lon','dry_season_length','t_mean','AI','ppt_lte_100','elevation','species','nlcd']
+cleanlinessDropList = ['basal_area','aspect','restrictive_depth','canopy_height','clay','sand','Sr','g1','p50','gpmax','c','bulk_density','agb']
+droppedVarsList = specDropList + cleanlinessDropList
 df = cleanup_data(df, droppedVarsList)
 
 
