@@ -442,12 +442,11 @@ df_wSpec =  load_data(dfPath, pwsPath)
 #further added nlcd to drop list since doesn't really make sense if focusing on fia plots
 specDropList = ['lat','lon','dry_season_length','t_mean','AI','t_std','ppt_lte_100','elevation','nlcd']
 #cleanlinessDropList = ['aspect','restrictive_depth','canopy_height','clay','sand','Sr','g1','p50','gpmax','c','bulk_density','agb']
-cleanlinessDropList = ['HAND','aspect','restrictive_depth','canopy_height','Sr','root_depth','bulk_density','agb']
-#droppedVarsList = specDropList + cleanlinessDropList + ['basal_area','ks','theta_third_bar','dist_to_water']
-droppedVarsList = specDropList + cleanlinessDropList + ['basal_area','sand','clay','dist_to_water']
+cleanlinessDropList = ['HAND','restrictive_depth','canopy_height','Sr','root_depth','bulk_density','agb']
+droppedVarsList = specDropList + cleanlinessDropList + ['basal_area','ks','theta_third_bar','dist_to_water','p50','gpmax']
+#droppedVarsList = specDropList + cleanlinessDropList + ['vpd_mean','basal_area','sand','clay','dist_to_water']
 df_wSpec = cleanup_data(df_wSpec, droppedVarsList)
 df_noSpec = df_wSpec.drop(columns='species', inplace=False)
-
 
 #seems to be some weird issue where RF model and importance is possibly affected by number of unique pixels in each dataset
 #add random noise to avoid that to be safe

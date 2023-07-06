@@ -104,6 +104,10 @@ def check_regridding(gtPWS, gtShape, featFiles, regridDir):
                 print('checked ' + file + ': shape HAS PROBLEM')
             if gt != gtPWS:   
                 print('checked ' + file + ': geotransform HAS PROBLEM')
+                print('gtPWS: ' )
+                print(gtPWS)
+                print('gt file: ')
+                print(gt)
         else: 
             print('checked ' + file + ': all good') 
 
@@ -141,8 +145,10 @@ def create_h5(store_path):
     
     
     #add data one by one
-    array[0] = get_value( os.path.join(regridDir, 'Unified_NA_Soil_Map_Subsoil_Silt_Fraction.tif'), 1)
-    array[1] = get_value( os.path.join(regridDir, 'Unified_NA_Soil_Map_Subsoil_Clay_Fraction.tif'), 1)
+    #array[0] = get_value( os.path.join(regridDir, 'Unified_NA_Soil_Map_Subsoil_Sand_Fraction.tif'), 1)
+    array[0] = get_value( os.path.join(regridDir, 'SandPercent_0to150cm_4km_westernUS.tif'), 1)
+    #array[1] = get_value( os.path.join(regridDir, 'Unified_NA_Soil_Map_Subsoil_Clay_Fraction.tif'), 1)
+    array[1] = get_value( os.path.join(regridDir, 'ClayPercent_0to150cm_4km_westernUS.tif'), 1)
     array[2] = get_value( os.path.join(regridDir, 'Ksat_0to50cm_4km_westernUS.tif'), 1)
     array[3] = get_value( os.path.join(regridDir, 'BulkDensityOneThirdBar_0to5cm_4km_westernUS.tif'), 1)
     array[4] = get_value( os.path.join(regridDir, 'WaterContentOneThirdBar_0to5cm_4km_westernUS.tif'), 1)    
