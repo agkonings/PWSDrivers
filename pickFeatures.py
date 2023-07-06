@@ -154,4 +154,38 @@ def plot_all_2Ddensities(df):
     # Display the figure
     plt.show()
 
-plot_all_2Ddensities(df_wSpec)
+#plot_all_2Ddensities(df_wSpec)
+
+
+'''
+go back and look at climate correlation matrices only
+'''
+#first create climate matrix with lots of extra variables to cut down to only pixels with FIA plots and traits
+dfAll =  load_data(dfPath, pwsPath)
+dfClim = dfAll[['pws','ndvi','vpd_mean','vpd_cv','ppt_mean','ppt_cv','t_mean','t_std','g1','basal_area','agb','elevation']]
+dfClim.dropna(inplace=True)
+dfClim.drop(columns=['g1','basal_area'], inplace=True) #then drop irrelevant columns
+dfClim['vpd_std'] = df['vpd_cv']*df['vpd_mean']
+dfClim['ppt_std'] = df['ppt_cv']*df['ppt_mean']
+
+#plot correlation matrix in two colormaps
+corrMatClim = dfClim.corr()
+r2bcmap = sns.color_palette("vlag", as_cmap=True)
+fig, ax = plt.subplots()
+sns.heatmap(corrMatClim, 
+            cmap = r2bcmap, vmin=-1, vmax=1)
+fig, ax = plt.subplots()
+sns.heatmap(np.abs(corrMatClim),
+            vmin=0, vmax=1)
+
+#then consider vod_std and ppt_std. Where the CVs the way to go?
+#is VPDcv signicantly less correlated with VPDmean than or NDVI than VPDstd?
+#no -> VPDcv and VPDstd both ~0.75 with vpd_mean 
+#is pptcv signicantly less correlated with pptmean than or NDVI than pptstd?
+#YES - > pptCV is 0.05, whereas ppt_std = 0.91
+#what is correlation with TWImean and TWImean
+#then decide: do we really need all 5 climate? Can we experiment with dropping any and doing about as well?
+
+#see what biomass, vpd_mean, ppt_mean, ppt_cv, vpd_std gives
+#how muc hR2 reduction if drop lowest of those? and do three traits each per type?
+ 

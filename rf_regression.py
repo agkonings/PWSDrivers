@@ -83,7 +83,7 @@ def get_categories_and_colors():
     
     plant = ['basal_area','canopy_height', "agb",'ndvi', "nlcd","species",'isohydricity', 'root_depth', 'p50', 'gpmax', 'c', 'g1']
     soil = ['clay', 'sand','silt','thetas', 'ks', 'vanGen_n','Sr','Sbedrock','bulk_density','theta_third_bar','AWS']
-    climate = [ 'dry_season_length', 'vpd_mean', 'vpd_cv',"ppt_mean","ppt_cv","t_mean","t_std","ppt_lte_100","AI"]
+    climate = [ 'dry_season_length', 'vpd_mean', 'vpd_std',"ppt_mean","ppt_cv","t_mean","t_std","ppt_lte_100","AI"]
     topo = ['elevation', 'aspect', 'slope', 'twi',"dist_to_water"]
     
     return green, brown, blue, yellow, plant, soil, climate, topo 
@@ -93,6 +93,7 @@ def prettify_names(names):
                  "ndvi":"$NDVI_{mean}$",
                  "vpd_mean":"VPD$_{mean}$",
                  "vpd_cv":"VPD$_{CV}$",
+                 "vpd_std":"VPD$_{std}$",
                  "thetas":"Soil porosity",
                  "elevation":"Elevation",
                  "dry_season_length":"Dry season length",
@@ -434,15 +435,16 @@ plt.rcParams.update({'font.size': 18})
 
 
 #%% Load data
-dfPath = os.path.join(dirs.dir_data, 'inputFeatures_wgNATSGO_wBA.h5')
+dfPath = os.path.join(dirs.dir_data, 'inputFeatures_wgNATSGO_wBA_wHAND.h5')
 pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas.tif'
 df_wSpec =  load_data(dfPath, pwsPath)
 #sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.75, see pickFeatures.py
 #further added nlcd to drop list since doesn't really make sense if focusing on fia plots
-specDropList = ['lat','lon','dry_season_length','t_mean','AI','ppt_lte_100','elevation','nlcd']
+specDropList = ['lat','lon','dry_season_length','t_mean','AI','t_std','ppt_lte_100','elevation','nlcd']
 #cleanlinessDropList = ['aspect','restrictive_depth','canopy_height','clay','sand','Sr','g1','p50','gpmax','c','bulk_density','agb']
-cleanlinessDropList = ['aspect','restrictive_depth','canopy_height','clay','sand','Sr','root_depth','c','bulk_density','agb']
-droppedVarsList = specDropList + cleanlinessDropList
+cleanlinessDropList = ['HAND','aspect','restrictive_depth','canopy_height','Sr','root_depth','bulk_density','agb']
+#droppedVarsList = specDropList + cleanlinessDropList + ['basal_area','ks','theta_third_bar','dist_to_water']
+droppedVarsList = specDropList + cleanlinessDropList + ['basal_area','sand','clay','dist_to_water']
 df_wSpec = cleanup_data(df_wSpec, droppedVarsList)
 df_noSpec = df_wSpec.drop(columns='species', inplace=False)
 

@@ -133,7 +133,7 @@ def create_h5(store_path):
     keys = ['sand','clay','ks','bulk_density','theta_third_bar','isohydricity',\
         'root_depth','canopy_height','p50','gpmax', 'c','g1','nlcd',
         "elevation","aspect","slope","twi","dry_season_length","ndvi",\
-            "vpd_mean","vpd_cv", "dist_to_water","agb","ppt_mean","ppt_cv",\
+            "vpd_mean","vpd_std", "dist_to_water","agb","ppt_mean","ppt_cv",\
         "t_mean","t_std","ppt_lte_100", "AI","Sr","AWS", "restrictive_depth", "species", "basal_area", "lon","lat","HAND"]
     
     array = np.zeros((len(keys), data['pws'].shape[0],data['pws'].shape[1])).astype('float')
@@ -144,8 +144,8 @@ def create_h5(store_path):
     array[0] = get_value( os.path.join(regridDir, 'Unified_NA_Soil_Map_Subsoil_Silt_Fraction.tif'), 1)
     array[1] = get_value( os.path.join(regridDir, 'Unified_NA_Soil_Map_Subsoil_Clay_Fraction.tif'), 1)
     array[2] = get_value( os.path.join(regridDir, 'Ksat_0to50cm_4km_westernUS.tif'), 1)
-    array[3] = get_value( os.path.join(regridDir, 'BulkDensityOneThirdBar_0to50cm_4km_westernUS.tif'), 1)
-    array[4] = get_value( os.path.join(regridDir, 'WaterContentOneThirdBar_0to50cm_4km_westernUS.tif'), 1)    
+    array[3] = get_value( os.path.join(regridDir, 'BulkDensityOneThirdBar_0to5cm_4km_westernUS.tif'), 1)
+    array[4] = get_value( os.path.join(regridDir, 'WaterContentOneThirdBar_0to5cm_4km_westernUS.tif'), 1)    
     array[5] = get_value( os.path.join(regridDir, 'isohydricity.tif'), 1)
     array[6] = get_value( os.path.join(regridDir, 'root_depth.tif'), 1)
     array[7] = get_value( os.path.join(regridDir, 'canopy_height.tif'), 1)
@@ -162,8 +162,9 @@ def create_h5(store_path):
     array[17] = get_value( os.path.join(regridDir, 'fireSeasonLength.tif'), 1)    
     array[18] = get_value( os.path.join(regridDir, 'ndvi_mean.tif'), 1)    
     array[19] = get_value( os.path.join(regridDir, 'vpd_mean.tif'), 1)    
-    vpdStd = get_value( os.path.join(regridDir, 'vpdStd.tif'), 1)        
-    array[20] = vpdStd/array[19]
+    array[20] = get_value( os.path.join(regridDir, 'vpdStd.tif'), 1)        
+    #vpdStd = get_value( os.path.join(regridDir, 'vpdStd.tif'), 1)        
+    #array[20] = vpdStd/array[19]
     array[21] = get_value( os.path.join(regridDir, 'distance_to_water_bodies.tif'), 1)    
     array[22] = get_value( os.path.join(regridDir, 'agb_2020.tif'), 1)    
     array[23] = get_value( os.path.join(regridDir, 'pptMean.tif'), 1)    
