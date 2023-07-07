@@ -15,6 +15,7 @@ from sklearn.inspection import permutation_importance
 import sklearn.metrics
 from scipy.stats.stats import spearmanr
 from scipy.stats.stats import pearsonr
+import pickle
 
 import dirs
 
@@ -438,15 +439,23 @@ plt.rcParams.update({'font.size': 18})
 dfPath = os.path.join(dirs.dir_data, 'inputFeatures_wgNATSGO_wBA_wHAND.h5')
 pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas.tif'
 df_wSpec =  load_data(dfPath, pwsPath)
+
 #sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.75, see pickFeatures.py
 #further added nlcd to drop list since doesn't really make sense if focusing on fia plots
-specDropList = ['lat','lon','dry_season_length','t_mean','AI','t_std','ppt_lte_100','elevation','nlcd']
+specDropList = ['dry_season_length','t_mean','AI','t_std','ppt_lte_100','elevation','nlcd']
 #cleanlinessDropList = ['aspect','restrictive_depth','canopy_height','clay','sand','Sr','g1','p50','gpmax','c','bulk_density','agb']
 cleanlinessDropList = ['HAND','restrictive_depth','canopy_height','Sr','root_depth','bulk_density','agb']
-droppedVarsList = specDropList + cleanlinessDropList + ['basal_area','ks','theta_third_bar','dist_to_water','p50','gpmax']
+droppedVarsList = specDropList + cleanlinessDropList + ['ndvi','vpd_std','basal_area','ks','theta_third_bar','dist_to_water','p50','gpmax']
 #droppedVarsList = specDropList + cleanlinessDropList + ['vpd_mean','basal_area','sand','clay','dist_to_water']
 df_wSpec = cleanup_data(df_wSpec, droppedVarsList)
-df_noSpec = df_wSpec.drop(columns='species', inplace=False)
+
+#save for exact use in checkCrossCorrs.py
+pickleLoc = '../data/df_wSpec.pkl'
+with open(pickleLoc, 'wb') as file:
+    pickle.dump(df_wSpec, file)
+    
+#then drop species, lat, lon for actual RF
+df_noSpec = df_wSpec.drop(columns=['lat','lon','species'], inplace=False)
 
 #seems to be some weird issue where RF model and importance is possibly affected by number of unique pixels in each dataset
 #add random noise to avoid that to be safe
@@ -467,7 +476,6 @@ ax = plot_corr_feats(df_noSpec)
 axImp = plot_importance(imp)
 ax = plot_importance_by_category(imp)
 ax = plot_importance_plants(imp)
-x = plot_preds_actual(X_test, y_test, regrn, score)
 
 '''
 now check how explanatory power compares if don't have species vs. if have 
@@ -500,16 +508,5 @@ coeffDeterm = 1 - SSres/SStot
 print('amount explained with ONLY species info ' + str(coeffDeterm))
 print('fraction explained by species' + str(coeffDeterm/score))
 
-'''NBcoeffDeterm was about 0.15 with all species, now 0.12 with top species'
 
-summary findings = scores very similar!! 0.438 vs 0.436 with or without species.
-so doesn't help much. coeffDeterm = 0.14 so species alone can get about 1/3rd of var
-That is, R2 about 0.12 with categorical prediction from species vs about 0.45 with RF
-note also that while there are 199 species, there's a ton that barely have any representation
-most common are: spec 65 (n=2256), spec 69 (n=1284), spec 122 (2589), spec202 (1631)
-spec 756 (3151). So the top 5 species adds up to 10911 out of 19551 pixels (56%)
-if add a bit more, we also have spec 58 (405), spec 64 (660), spec 106 (561), spec 108 (753),
-spec 133 (492), spec 746 (486), spec 814 (465)
-top 8 species gets 12885 or 66%
-so toop 11 species gets 14241, or 73%
-so could do 7-way one-hot encoding as additional test and compairson of interations'''
+
