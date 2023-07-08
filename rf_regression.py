@@ -8,6 +8,7 @@ import sklearn.ensemble
 import sklearn.model_selection
 import matplotlib.pyplot as plt
 import seaborn as sns
+import mpl_scatter_density
 import sklearn.preprocessing
 import matplotlib.patches
 import sklearn.inspection
@@ -509,4 +510,44 @@ print('amount explained with ONLY species info ' + str(coeffDeterm))
 print('fraction explained by species' + str(coeffDeterm/score))
 
 
+'''Plot Figure 3 with R2 for both RF and species'''
+y_hat =regrn.predict(X_test)
+    
+fig, (ax1, ax2) = plt.subplots(1,2)
+ax1.scatter(y_hat, y_test, s = 1, alpha = 0.4, color='k')
+ax1.set_box_aspect(1)
+ax1.set_xlabel("Predicted PWS", fontsize = 14)
+ax1.set_ylabel("Actual PWS", fontsize = 14)
+ax1.set_xlim(0,1.4)
+ax1.set_ylim(0,1.4)
+ax1.set_title('Random forest', fontsize = 14)
+ax1.annotate(f"R$^2$={score:0.2f}", (0.63,0.05),xycoords = "axes fraction", 
+             fontsize=14, ha = "left")
+ax2.set_box_aspect(1)
+ax2.scatter(pwsPred, pwsVec, s = 1, alpha = 0.4, color='k')
+ax2.set_xlabel("Predicted PWS", fontsize = 14)
+ax2.set_xlim(0,1.4)
+ax2.set_ylim(0,1.4)
+ax2.set_title('Species mean', fontsize = 14)
+ax2.annotate(f"R$^2$={coeffDeterm:0.2f}", (0.63,0.05),xycoords = "axes fraction", 
+             fontsize=14, ha = "left")
 
+
+
+fig = plt.figure()
+ax = fig.add_subplot(1, 1, 1, projection="scatter_density")
+ax.scatter_density(y_hat, y_test, cmap=plt.cm.Blues)
+#ax.xlabel("Predicted PWS", fontsize = 14)
+#ax.ylabel("Actual PWS", fontsize = 14)
+#ax.set_xlim(0,1.4)
+#ax.set_ylim(0,1.4)
+#ax.set_title('Random forest', fontsize = 14)
+
+fig = plt.figure()
+ax = fig.add_subplot(1, 1, 1, projection="scatter_density")
+ax.scatter_density(pwsPred, pwsVec, cmap=plt.cm.Reds)
+#ax.xlabel("Predicted PWS", fontsize = 14)
+#ax.ylabel("Actual PWS", fontsize = 14)
+#ax.set_xlim(0,1.4)
+#ax.set_ylim(0,1.4)
+#ax.set_title('Species mean', fontsize = 14)
