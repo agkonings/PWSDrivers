@@ -100,11 +100,14 @@ for unSite in combdf['siteID'].unique():
                     raise Exception('Multiple dominant species are impossible')
                 dominantLocs = pd.concat([dominantLocs, sitedf[BARat>dominantThresh]])
             else:
-                noGoodCnt += 1
+                noGoodCnt += 1            
 #store as pickle file for use elsewhere in mapping/exploring the data sources
 pickleLoc = '../data/dominantLocs.pkl'
 with open(pickleLoc, 'wb') as file:
     pickle.dump(dominantLocs, file)
+#with open(pickleLoc, 'rb') as file:
+#    pickle.load(dominantLocs, file)
+
                 
 #with COND_CN, leads to 138, 172 dominantLocs
 #of which there are 138,070 unique site IDs (so 100 plots within 4 km of each other)
@@ -179,8 +182,11 @@ allMask[allIndY > n1] = False
 allIndX = allIndX[allMask]
 allIndY = allIndY[allMask]
 allFIAMap[allIndY, allIndX] = combdf['BALiveAc'][allMask]
-nFIAPix = np.sum(~np.isnan(allFIAMap))
+allFIAMapCopy = allFIAMap.copy()
+allFIAMapCopy[np.isnan(pws)] = np.nan
+nFIAPix = np.sum(~np.isnan(allFIAMapCopy))
 print('# of FIA plots in Western US is : ' + str(nFIAPix) )
+error
 
 #save geotiff
 driver = gdal.GetDriverByName('GTiff')
