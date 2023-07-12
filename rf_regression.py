@@ -432,7 +432,6 @@ def plot_pdp(regr, X_test):
         plt.show()
     
     
-    
 plt.rcParams.update({'font.size': 18})
 
 

@@ -49,10 +49,10 @@ ds = None
 #can't do this by condition because identical plots measured 10 years apart will 
 #have different condition numbers.
 #instead, approach by making cheap site index that maps to each location within 4km
-#1/gt is actually 27.83 instead of 28, but assume this is close enough 
+
+
 lonInd = np.floor( (combdf['LON']-gt[0])/gt[1] ).to_numpy().astype(int)
-latInd = np.floor( (combdf['LAT']-gt[0])/gt[1] ).to_numpy().astype(int)
-#latInd = np.floor(combdf['LAT']*27)
+latInd = np.floor( (combdf['LAT']-gt[3])/gt[5] ).to_numpy().astype(int)
 cheapSiteID = lonInd*1e5 + latInd 
 combdf['siteID'] = cheapSiteID
 
@@ -168,6 +168,12 @@ nDomFIAPix = np.sum(~np.isnan(BAMapCopy))
 print('dominance threshold % BA at each site is : ' + str(dominantThresh) )
 print('# of PWS pixels with FIA pllots is : ' + str(nDomFIAPix) )
 
+#make maps of FIA locations
+FIALatMap = np.zeros(pws.shape) * np.nan
+FIALatMap[indY, indX] = dominantLocs['LAT']
+FIALonMap = np.zeros(pws.shape) * np.nan
+FIALonMap[indY, indX] = dominantLocs['LON']
+
 #calculate how many FIA plots total across US
 allFIAMap = np.zeros(pws.shape) * np.nan
 allIndX = np.floor( (combdf['LON']-gt[0])/gt[1] ).to_numpy().astype(int)
@@ -186,7 +192,6 @@ allFIAMapCopy = allFIAMap.copy()
 allFIAMapCopy[np.isnan(pws)] = np.nan
 nFIAPix = np.sum(~np.isnan(allFIAMapCopy))
 print('# of FIA plots in Western US is : ' + str(nFIAPix) )
-error
 
 #save geotiff
 driver = gdal.GetDriverByName('GTiff')
@@ -213,7 +218,21 @@ dataset.GetRasterBand(1).WriteArray(BALIVEMap)
 dataset.FlushCache()#Writetodisk.
 dataset=None
 
+driver = gdal.GetDriverByName('GTiff')
+output_file = 'FIALats.tif'
+dataset = driver.Create(output_file, pws_x,pws_y, 1, gdal.GDT_Float32)
+dataset.SetGeoTransform(gt)
+dataset.GetRasterBand(1).WriteArray(FIALatMap)
+dataset.FlushCache()#Writetodisk.
+dataset=None
 
+driver = gdal.GetDriverByName('GTiff')
+output_file = 'FIALons.tif'
+dataset = driver.Create(output_file, pws_x,pws_y, 1, gdal.GDT_Float32)
+dataset.SetGeoTransform(gt)
+dataset.GetRasterBand(1).WriteArray(FIALonMap)
+dataset.FlushCache()#Writetodisk.
+dataset=None
 
 '''Now repeat with P50 file to make sure gets fewer points
 

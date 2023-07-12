@@ -145,9 +145,9 @@ def create_h5(store_path):
     
     
     #add data one by one
-    #array[0] = get_value( os.path.join(regridDir, 'Unified_NA_Soil_Map_Subsoil_Sand_Fraction.tif'), 1)
+    #array[0] = get_value( os.path.join(regridDir, 'Unified_NA_Soil_Map_Subsoil_Clay_Fraction.tif'), 1)
     array[0] = get_value( os.path.join(regridDir, 'SandPercent_0to150cm_4km_westernUS.tif'), 1)
-    #array[1] = get_value( os.path.join(regridDir, 'Unified_NA_Soil_Map_Subsoil_Clay_Fraction.tif'), 1)
+    #array[1] = get_value( os.path.join(regridDir, 'Unified_NA_Soil_Map_Subsoil_Silt_Fraction.tif'), 1)
     array[1] = get_value( os.path.join(regridDir, 'ClayPercent_0to150cm_4km_westernUS.tif'), 1)
     array[2] = get_value( os.path.join(regridDir, 'Ksat_0to50cm_4km_westernUS.tif'), 1)
     array[3] = get_value( os.path.join(regridDir, 'BulkDensityOneThirdBar_0to5cm_4km_westernUS.tif'), 1)
@@ -186,8 +186,8 @@ def create_h5(store_path):
     array[31] = get_value( os.path.join(regridDir, 'RestrictiveLayerDepth_resampled_clipped.tif'), 1)                
     array[32] = get_value( 'C:/repos/data/FIADomSpecies.tif', 1)
     array[33] = get_value( os.path.join(regridDir, 'FIABasalAreaAc.tif'), 1)        
-    array[34] = lons
-    array[35] = lats  
+    array[34] = get_value( 'C:/repos/data/FIALons.tif', 1)
+    array[35] = get_value( 'C:/repos/data/FIALats.tif', 1)  
     array[36] = get_value( os.path.join(regridDir, 'hand_epsg4326_4000m_merithydro.tif'), 1)    
     
     
@@ -214,7 +214,8 @@ def create_h5(store_path):
     df.loc[df['theta_third_bar']<0] = np.nan
     df.loc[df['AWS']<0] = np.nan
     
-    #plot map of where there is data
+    '''
+    #plot map of where there is data to debug
     #first load pws to get grid size
     filename = os.path.join("C:/repos/data/pws_features/PWS_through2021_allSeas.tif") #load an old PWS file. 
     ds = gdal.Open(filename)
@@ -253,6 +254,7 @@ def create_h5(store_path):
     im = ax1.imshow(latMap, interpolation='none')
     plt.title('lats with PWS, soil, elev, PFT, and trait, NaNs')
     print('removing all NaNs has length: ' + str(len(df3)))
+    '''
     
 
     store = pd.HDFStore(store_path)
