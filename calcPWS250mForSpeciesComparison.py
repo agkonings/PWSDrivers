@@ -168,10 +168,14 @@ print('[INFO] Regressing')
 out = master.groupby('pixel_index').apply(regress,norm = "lfmc_dfmc_norm", coefs_type = "positive")
 
 coefs = [x[1] for x in out]
-#x_loc = [x[2] for x in out]
-#y_loc = [x[3] for x in out]
+x_loc = [x[2] for x in out]
+y_loc = [x[3] for x in out]
 PWS_250m = [np.sum(x[1:]) for x in coefs] #sum of ocefficients
+
+#turn into dataframe
+data = {'PWS': PWS_250m, 'lat': y_loc, 'lon': x_loc}
+df = pd.DataFrame(data)
 
 pickleLoc = '../data/PWS_250m.pkl'
 with open(pickleLoc, 'wb') as file:
-    pickle.dump(PWS_250m, file)
+    pickle.dump(df, file)
