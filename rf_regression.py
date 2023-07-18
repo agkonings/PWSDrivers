@@ -361,10 +361,13 @@ def plot_importance(imp):
     plt.tight_layout()
     return ax
 
-def plot_importance_by_category(imp):
+def plot_importance_by_category(imp, dropVars = None):
     """
     Feature importance combined by categories
     """
+    
+    if dropVars  != None:
+        imp = imp.drop(dropVars)
     
     green, brown, blue, yellow, plant, soil, climate, topo \
                                             = get_categories_and_colors()
@@ -387,6 +390,8 @@ def plot_importance_by_category(imp):
     ax.spines['top'].set_visible(False)
     
     plt.tight_layout()
+    
+    print(combined)
     
 def plot_importance_plants(imp):
     '''
@@ -444,10 +449,10 @@ df_wSpec =  load_data(dfPath, pwsPath)
 #sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.75, see pickFeatures.py
 #further added nlcd to drop list since doesn't really make sense if focusing on fia plots
 specDropList = ['dry_season_length','t_mean','AI','t_std','ppt_lte_100','elevation','nlcd']
-#cleanlinessDropList = ['aspect','restrictive_depth','canopy_height','clay','sand','Sr','g1','p50','gpmax','c','bulk_density','agb']
 cleanlinessDropList = ['HAND','restrictive_depth','canopy_height','Sr','root_depth','bulk_density']
 droppedVarsList = specDropList + cleanlinessDropList + ['ppt_mean','agb','theta_third_bar','silt','vpd_std','basal_area','dist_to_water','p50','gpmax']
-#droppedVarsList = specDropList + cleanlinessDropList + ['vpd_mean','basal_area','sand','clay','dist_to_water']
+droppedVarsList.remove('ppt_mean')
+droppedVarsList.remove('vpd_std')
 df_wSpec = cleanup_data(df_wSpec, droppedVarsList)
 
 #save for exact use in checkCrossCorrs.py
@@ -475,6 +480,7 @@ X_test, y_test, regrn, score,  imp = regress(df_noSpec, optHyperparam=False)
 ax = plot_corr_feats(df_noSpec)
 axImp = plot_importance(imp)
 ax = plot_importance_by_category(imp)
+ax = plot_importance_by_category(imp, dropVars=['ndvi','vpd_mean','ppt_cv'])
 ax = plot_importance_plants(imp)
 
 '''
