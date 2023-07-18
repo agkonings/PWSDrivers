@@ -365,6 +365,7 @@ def plot_importance_by_category(imp):
     """
     Feature importance combined by categories
     """
+    
     green, brown, blue, yellow, plant, soil, climate, topo \
                                             = get_categories_and_colors()
     combined = pd.DataFrame({"category":["plant","climate","soil","topography"], \
@@ -437,7 +438,7 @@ plt.rcParams.update({'font.size': 18})
 
 #%% Load data
 dfPath = os.path.join(dirs.dir_data, 'inputFeatures_wgNATSGO_wBA_wHAND.h5')
-pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas.tif'
+pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas_4monthslag.tif'
 df_wSpec =  load_data(dfPath, pwsPath)
 
 #sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.75, see pickFeatures.py
@@ -445,7 +446,7 @@ df_wSpec =  load_data(dfPath, pwsPath)
 specDropList = ['dry_season_length','t_mean','AI','t_std','ppt_lte_100','elevation','nlcd']
 #cleanlinessDropList = ['aspect','restrictive_depth','canopy_height','clay','sand','Sr','g1','p50','gpmax','c','bulk_density','agb']
 cleanlinessDropList = ['HAND','restrictive_depth','canopy_height','Sr','root_depth','bulk_density']
-droppedVarsList = specDropList + cleanlinessDropList + ['agb','theta_third_bar','ppt_mean','silt','vpd_std','basal_area','dist_to_water','p50','gpmax']
+droppedVarsList = specDropList + cleanlinessDropList + ['ppt_mean','agb','theta_third_bar','silt','vpd_std','basal_area','dist_to_water','p50','gpmax']
 #droppedVarsList = specDropList + cleanlinessDropList + ['vpd_mean','basal_area','sand','clay','dist_to_water']
 df_wSpec = cleanup_data(df_wSpec, droppedVarsList)
 
@@ -555,16 +556,16 @@ ax1.scatter(y_hat, y_test, s = 1, alpha = 0.4, color='k')
 ax1.set_box_aspect(1)
 ax1.set_xlabel("Predicted PWS", fontsize = 14)
 ax1.set_ylabel("Actual PWS", fontsize = 14)
-ax1.set_xlim(0,1.4)
-ax1.set_ylim(0,1.4)
+ax1.set_xlim(0,1)
+ax1.set_ylim(0,1)
 ax1.set_title('Random forest', fontsize = 14)
 ax1.annotate(f"R$^2$={score:0.2f}", (0.63,0.05),xycoords = "axes fraction", 
              fontsize=14, ha = "left")
 ax2.set_box_aspect(1)
 ax2.scatter(pwsPred, pwsVec, s = 1, alpha = 0.4, color='k')
 ax2.set_xlabel("Predicted PWS", fontsize = 14)
-ax2.set_xlim(0,1.4)
-ax2.set_ylim(0,1.4)
+ax2.set_xlim(0,1)
+ax2.set_ylim(0,1)
 ax2.set_title('Species mean', fontsize = 14)
 ax2.annotate(f"R$^2$={coeffDeterm:0.2f}", (0.63,0.05),xycoords = "axes fraction", 
              fontsize=14, ha = "left")

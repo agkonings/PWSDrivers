@@ -57,7 +57,8 @@ def load_data(dfPath, pwsPath):
     return df
 
 dfPath = os.path.join('C:/repos/data/inputFeatures_wgNATSGO_wBA.h5')
-pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021.tif'
+pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas_4monthslag.tif'
+#pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021.tif'
 df =  load_data(dfPath, pwsPath)
 
 #find data with valid PWS
@@ -162,7 +163,7 @@ go back and look at climate correlation matrices only
 '''
 #first create climate matrix with lots of extra variables to cut down to only pixels with FIA plots and traits
 dfAll =  load_data(dfPath, pwsPath)
-dfClim = dfAll[['pws','ndvi','vpd_mean','vpd_cv','ppt_mean','ppt_cv','t_mean','t_std','g1','basal_area','agb','elevation']]
+dfClim = dfAll[['elevation','pws','ndvi','vpd_mean','vpd_cv','ppt_mean','ppt_cv','t_mean','t_std','g1','basal_area','agb','elevation']]
 dfClim.dropna(inplace=True)
 dfClim.drop(columns=['g1','basal_area'], inplace=True) #then drop irrelevant columns
 dfClim['vpd_std'] = df['vpd_cv']*df['vpd_mean']

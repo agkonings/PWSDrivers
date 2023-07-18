@@ -168,7 +168,7 @@ lonInd = np.round( (df_wSpec['lon'].to_numpy() - gt[0])/gt[1] ).astype(int)
 dfClim = df_wSpec.copy()
 dfClim['mnDFMC'] = mnDFMCMap[latInd, lonInd]
 dfClim['stdDFMC'] = stdDFMCMap[latInd, lonInd]
-dfClim = dfClim[['mnDFMC','stdDFMC','vpd_mean','ppt_mean','ppt_cv']]        
+dfClim = dfClim[['mnDFMC','stdDFMC','vpd_mean','ppt_cv']]        
 
 '''
 for siteLat in df_wSpec['lat']:
