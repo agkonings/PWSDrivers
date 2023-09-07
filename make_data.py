@@ -134,7 +134,7 @@ def create_h5(store_path):
     #shape. Note that land cover file has problems. Just don't load for now
     check_regridding(gtPWS, data['pws'].shape, featFiles, regridDir)    
     
-    keys = ['sand','silt','ks','bulk_density','theta_third_bar','isohydricity',\
+    keys = ['sand','clay','ks','bulk_density','theta_third_bar','isohydricity',\
         'root_depth','canopy_height','p50','gpmax', 'c','g1','nlcd',
         "elevation","aspect","slope","twi","dry_season_length","ndvi",\
             "vpd_mean","vpd_std", "dist_to_water","agb","ppt_mean","ppt_cv",\
@@ -146,7 +146,7 @@ def create_h5(store_path):
     
     #add data one by one
     array[0] = get_value( os.path.join(regridDir, 'SandPercent_0to150cm_4km_westernUS.tif'), 1)
-    array[1] = get_value( os.path.join(regridDir, 'SiltPercent_0to150cm_4km_westernUS.tif'), 1)
+    array[1] = get_value( os.path.join(regridDir, 'ClayPercent_0to150cm_4km_westernUS.tif'), 1)
     array[2] = get_value( os.path.join(regridDir, 'Ksat_0to50cm_4km_westernUS.tif'), 1)
     array[3] = get_value( os.path.join(regridDir, 'BulkDensityOneThirdBar_0to5cm_4km_westernUS.tif'), 1)
     array[4] = get_value( os.path.join(regridDir, 'WaterContentOneThirdBar_0to5cm_4km_westernUS.tif'), 1)    
@@ -198,7 +198,7 @@ def create_h5(store_path):
     
     df.describe()
     df.loc[df['sand']<-1] = np.nan
-    df.loc[df['silt']<-1] = np.nan
+    df.loc[df['clay']<-1] = np.nan
     df.loc[df['ks']<-1] = np.nan
     df.loc[df['bulk_density']<0] = np.nan
     df.loc[df['nlcd']<41] = np.nan #remove open space & developed land

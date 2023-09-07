@@ -443,21 +443,20 @@ plt.rcParams.update({'font.size': 18})
 
 #%% Load data
 dfPath = os.path.join(dirs.dir_data, 'inputFeatures_wgNATSGO_wBA_wHAND.h5')
-pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas_4monthslag_exact6years.tif'
+pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas_3monthslag.tif'
 df_wSpec =  load_data(dfPath, pwsPath)
 
 #sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.75, see pickFeatures.py
 #further added nlcd to drop list since doesn't really make sense if focusing on fia plots
 specDropList = ['dry_season_length','t_mean','AI','t_std','ppt_lte_100','elevation']
 cleanlinessDropList = ['HAND','restrictive_depth','canopy_height','Sr','root_depth','bulk_density']
-droppedVarsList = specDropList + cleanlinessDropList + ['ppt_mean','agb','theta_third_bar','silt','vpd_std','basal_area','dist_to_water','p50','gpmax']
+droppedVarsList = specDropList + cleanlinessDropList + ['ppt_mean','agb','theta_third_bar','clay','vpd_std','basal_area','dist_to_water','p50','gpmax']
 #droppedVarsList.remove('ppt_mean')
 #droppedVarsList.remove('vpd_std')
 df_wSpec = cleanup_data(df_wSpec, droppedVarsList)
 
 #remove pixels with NLCD status that is not woody
 df_wSpec = df_wSpec[df_wSpec['nlcd']<70] #unique values are 41, 42, 43, 52
-
 
 #save for exact use in checkCrossCorrs.py
 pickleLoc = '../data/df_wSpec.pkl'
