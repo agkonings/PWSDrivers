@@ -106,7 +106,7 @@ pickleLoc = '../data/dominantLocs.pkl'
 with open(pickleLoc, 'wb') as file:
     pickle.dump(dominantLocs, file)
 #with open(pickleLoc, 'rb') as file:
-#    pickle.load(dominantLocs, file)
+#    dominantLocs = pickle.load(file)
 
                 
 #with COND_CN, leads to 138, 172 dominantLocs
