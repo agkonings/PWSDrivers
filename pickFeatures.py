@@ -58,7 +58,7 @@ def load_data(dfPath, pwsPath):
 
 dfPath = os.path.join('C:/repos/data/inputFeatures_wgNATSGO_wBA.h5')
 pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas_4monthslag.tif'
-#pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021.tif'
+#pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas.tif'
 df =  load_data(dfPath, pwsPath)
 
 #find data with valid PWS
