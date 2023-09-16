@@ -165,45 +165,51 @@ ds = None
 #can therefore round
 latInd = np.round( (df_wSpec['lat'].to_numpy() - gt[3])/gt[5] ).astype(int)
 lonInd = np.round( (df_wSpec['lon'].to_numpy() - gt[0])/gt[1] ).astype(int)
-dfClim = df_wSpec.copy()
-dfClim['mnDFMC'] = mnDFMCMap[latInd, lonInd]
-dfClim['stdDFMC'] = stdDFMCMap[latInd, lonInd]
-dfClim = dfClim[['mnDFMC','stdDFMC','vpd_mean','ppt_cv']]        
+dfDFMC = df_wSpec.copy()
+dfDFMC['mnDFMC'] = mnDFMCMap[latInd, lonInd]
+dfDFMC['stdDFMC'] = stdDFMCMap[latInd, lonInd]
+dfDFMC = dfDFMC[['mnDFMC','stdDFMC','vpd_mean','ppt_cv']]        
 
-'''
-for siteLat in df_wSpec['lat']:
-    siteY, dist = 
-for siteLon in df_wSpec['lon']:
-    siteX = 
-for (x, y) in zip(siteX, siteY):
-    siteMnDFMC.append(mnDFMC[x, y])
-    siteStdDFMC.append(stdDFMC[x, y])
-'''
-
-corrMatClim = dfClim.corr()
-r2bcmap = sns.color_palette("RdBu", as_cmap=True)
+corrMatDFMC = dfDFMC.corr()
+corrMatDFMC = corrMatDFMC.drop(['vpd_mean','ppt_cv'], axis=1) 
+r2bcmap = sns.color_palette("vlag", as_cmap=True)
 fig, ax = plt.subplots(figsize = (3,3))
-maskClim = np.full(corrMatClim.shape, False)
-maskClim[2:,:] = True
-sns.heatmap(dfClim.corr(), mask=maskClim,
-        xticklabels=prettify_names(corrMatClim.columns.values),
-        yticklabels=prettify_names(corrMatClim.columns.values),
-        cmap = r2bcmap, vmin=-0.75, vmax=0.75,
+sns.heatmap(np.round(corrMatDFMC, decimals=2),
+        xticklabels=prettify_names(corrMatDFMC.columns.values),
+        yticklabels=prettify_names(corrMatDFMC.index.values),
+        cmap = r2bcmap, vmin=-0.4, vmax=0.4,
         annot=True,  fmt=".2f", annot_kws={'size': 10})
-
+plt.savefig("../figures/PWSDriversPaper/crossCorrDFMCStats.jpeg", dpi=300)
 
 
 '''
 Make general cross-correlation map
 '''
-df_wSpec.drop(columns=['species','lat','lon'], inplace=True)
+df_wSpec.drop(columns=['species','lat','lon','nlcd'], inplace=True)
+columnOrder = ['pws', 'vpd_mean', 'vpd_std', 'ppt_cv', 'ndvi', 'isohydricity', 'c', 'g1', 'sand', 'ks', 'AWS', 'aspect',
+       'slope', 'twi']
+df_wSpec = df_wSpec[columnOrder] #re-order manually to make easier to read
 corrMat = df_wSpec.corr()
 mask = np.triu(np.ones_like(corrMat, dtype=bool))
 fig, ax = plt.subplots()
 sns.heatmap(corrMat, mask=mask,
         xticklabels=prettify_names(corrMat.columns.values),
-        yticklabels=prettify_names(corrMat.columns.values),
-        cmap = r2bcmap, vmin=-0.75, vmax=0.75)
+        yticklabels=prettify_names(corrMat.index.values),
+        cmap = r2bcmap, vmin=-0.7, vmax=0.7)
         #annot=True,  fmt=".1f", annot_kws={'size': 10})
+plt.savefig("../figures/PWSDriversPaper/crossCorr.jpeg", dpi=300)
 
+
+'''
+Make climate cross-correlation map
+'''
+df_clim = df_wSpec[['ndvi','vpd_mean','vpd_std','ppt_cv']]
+corrClim = df_clim.corr()
+mask = np.triu(np.ones_like(corrClim, dtype=bool))
+fig, ax = plt.subplots()
+sns.heatmap(corrClim, mask=mask,
+        xticklabels=prettify_names(corrClim.columns.values),
+        yticklabels=prettify_names(corrClim.columns.values),
+        cmap = r2bcmap, vmin=-0.75, vmax=0.75,
+        annot=True,  fmt=".2f", annot_kws={'size': 10})
 
