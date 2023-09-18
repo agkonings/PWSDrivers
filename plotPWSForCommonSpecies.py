@@ -96,7 +96,7 @@ combdf['SPCD'].value_counts()
 #814 = Gambel oak = 3793
 #242 = western redcedar = 3723
 
-#want dataframe with LAT, LON, SPCD, PWS. Can you get that from dominantLocs?
+#look at common species at locations where  asingle species dominates FIA plot
 pickleLoc = '../data/dominantLocs.pkl'
 with open(pickleLoc, 'rb') as file:
     dominantLocs = pickle.load(file)
@@ -106,10 +106,23 @@ with open(pickleLoc, 'rb') as file:
 #756 = honey mesquite
 #122 = ponderosa pine
 #65 = Utah juniper
+#108 is sixth most common = lodgepole pine
 
 #Missing common in dominantLocs
 #108 = lodgepole pine = in dominantLocs
 #106= common Pinyon = X in dominantLocs
+
+#look at common species at actual sites used in study (also filtered for NLCD, data availability)
+pickleLoc = '../data/df_wSpec.pkl'
+rfLocs = pd.read_pickle(pickleLoc)
+rfLocs['species'].value_counts()
+#five most common among actual sites
+#756 = honey mesquite
+#65 = Utah juniper
+#122 = ponderosa pine
+#202 = Douglas-fir
+#69 = oneseed juniper (juniperus monisperma)
+
 
 '''
 Now before plot, need to add PWS values to dominantLocs, too
@@ -136,27 +149,21 @@ dominantLocs.dropna(inplace=True)
 Ok, ready to plot!
 '''
 
-
-
-#decide to plot combo 202, 122, 108, 756, 65, 15
-plotSpecList = {202, 122, 108, 65, 756}
-spPalette = {263: "k", 65: "tab:blue", 108: "tab:orange", \
-           122: "tab:green", 202: "tab:red", 756:"tab:purple"}
-legLabels = ["Douglas-fir", "Ponderosa pine", "Lodgepole pine", "Utah juniper", "Honey mesquite", "All"]
+plotSpecList = {202, 122, 65, 756, 69}
+legLabels = ["Douglas-fir", "Ponderosa pine", "Utah juniper", "Honey mesquite", "Oneseed juniper", "All"]
 
 #filter so that only data with plotted species are kept
-topDomLocs = dominantLocs.copy()
-noDataRows = topDomLocs.loc[~topDomLocs.SPCD.isin(plotSpecList)]
+topDomLocs = rfLocs.copy()
+noDataRows = topDomLocs.loc[~topDomLocs.species.isin(plotSpecList)]
 topDomLocs.drop(noDataRows.index, inplace=True)
 
+
 fig, ax = plt.subplots()
-ax1 = sns.displot( topDomLocs, x='PWS', hue='SPCD', kind='kde', common_norm=False, \
+ax1 = sns.displot( topDomLocs, x='pws', hue='species', kind='kde', common_norm=False, \
             palette=sns.color_palette(n_colors=5), fill=False, bw_adjust=0.75, legend=False)
-sns.kdeplot(dominantLocs['PWS'], ax=ax1, color='k', bw_adjust=0.75)
+sns.kdeplot(rfLocs['pws'], ax=ax1, color='k', bw_adjust=0.75)
 plt.ylabel("Density", size=18); plt.xticks(fontsize=16)
 plt.xlabel("PWS", size=18); plt.yticks([], fontsize=16)
 plt.xlim(0,1)
 plt.legend(legLabels, loc="lower center", bbox_to_anchor=(0.5,-0.5), ncol=2, title=None, fontsize=18)
 plt.savefig("../figures/PWSDriversPaper/PWSkdesbyspecies.jpeg", dpi=300)
-
-
