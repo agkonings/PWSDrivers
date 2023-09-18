@@ -67,7 +67,7 @@ pws_y,pws_x = pws.shape
 wkt_projection = ds.GetProjection()
 ds = None
                 
-#read FIA points that are domiant from pullFIADominantSpecies.py
+#read FIA points that are domiant from rf_regression.py
 pickleLoc = '../data/df_wSpec.pkl'
 rfLocs = pd.read_pickle(pickleLoc)
 rfLocs = rfLocs.rename(columns={"lat": "LAT", "lon": "LON"}, errors="raise")
