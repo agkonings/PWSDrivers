@@ -67,9 +67,10 @@ pws_y,pws_x = pws.shape
 wkt_projection = ds.GetProjection()
 ds = None
                 
-#store as pickle file for use elsewhere in mapping/exploring the data sources
-pickleLoc = '../data/dominantLocs.pkl'
-dominantLocs = pd.read_pickle(pickleLoc)
+#read FIA points that are domiant from pullFIADominantSpecies.py
+pickleLoc = '../data/df_wSpec.pkl'
+rfLocs = pd.read_pickle(pickleLoc)
+rfLocs = rfLocs.rename(columns={"lat": "LAT", "lon": "LON"}, errors="raise")
                 
 #save each dataframe of locations to PWS grid
 def makeGridWithPlots(df, gridCol, gt, pws):
@@ -77,7 +78,6 @@ def makeGridWithPlots(df, gridCol, gt, pws):
     Parameters
     ----------
     df : dataframe, assumed to have 'LON' and 'LAT' columns
-    gridCol: the column of the dataframe to be gridded
     gt : geotransform associated with grid
     pws : basis of grid. NaN locatins are assumed to transfer to outgrid
 
@@ -99,12 +99,12 @@ def makeGridWithPlots(df, gridCol, gt, pws):
     dfMasked = df.copy()[mask]
     #create array, and assign 
     outGrid = np.zeros(pws.shape) * np.nan
-    outGrid[indY, indX] = dfMasked[gridCol]   
+    outGrid[indY, indX] = 1 
     outGrid[np.isnan(pws)] = np.nan
     return outGrid
 
-domSpecMap = makeGridWithPlots(dominantLocs, 'SPCD', gt, pws)
-FIAPlotMap = makeGridWithPlots(combdf, 'SPCD', gt, pws)
+domSpecMap = makeGridWithPlots(rfLocs, gt, pws)
+FIAPlotMap = makeGridWithPlots(combdf, gt, pws)
 
 #plot
 pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas.tif'
@@ -114,8 +114,6 @@ statesPath = "C:/repos/data/cb_2018_us_state_5m/cb_2018_us_state_5m.shp"
 states = gpd.read_file(statesPath)  
 
 fig, (ax1, ax2) = plt.subplots(2,1)
-plot_map(domSpecMap, pwsExtent, states, clrmap='Dark2', vmin=0, vmax=8)
-plot_map(FIAPlotMap, pwsExtent, states, clrmap='Dark2', vmin=0, vmax=8)
-
-#still need to get to plot as two subplots. Give up for now
+plot_map(domSpecMap, pwsExtent, states, clrmap='Dark2', vmin=0, vmax=1)
+plot_map(FIAPlotMap, pwsExtent, states, clrmap='Dark2', vmin=0, vmax=1)
 
