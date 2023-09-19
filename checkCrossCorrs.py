@@ -168,10 +168,10 @@ lonInd = np.round( (df_wSpec['lon'].to_numpy() - gt[0])/gt[1] ).astype(int)
 dfDFMC = df_wSpec.copy()
 dfDFMC['mnDFMC'] = mnDFMCMap[latInd, lonInd]
 dfDFMC['stdDFMC'] = stdDFMCMap[latInd, lonInd]
-dfDFMC = dfDFMC[['mnDFMC','stdDFMC','vpd_mean','ppt_cv']]        
+dfDFMC = dfDFMC[['mnDFMC','stdDFMC','vpd_mean','ppt_cv','ppt_mean']]        
 
 corrMatDFMC = dfDFMC.corr()
-corrMatDFMC = corrMatDFMC.drop(['vpd_mean','ppt_cv'], axis=1) 
+corrMatDFMC = corrMatDFMC.drop(['vpd_mean','ppt_cv','ppt_mean'], axis=1) 
 r2bcmap = sns.color_palette("vlag", as_cmap=True)
 fig, ax = plt.subplots(figsize = (3,3))
 sns.heatmap(np.round(corrMatDFMC, decimals=2),

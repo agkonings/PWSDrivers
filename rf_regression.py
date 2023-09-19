@@ -170,7 +170,7 @@ def regress(df, optHyperparam=False):
     y = df['pws']
     # separate into train and test set
     X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(
-        X, y, test_size=0.33, random_state=32)
+        X, y, test_size=0.1, random_state=32) 
     
     '''
     # Checking if leaves or node_impurity affects performance
@@ -180,14 +180,14 @@ def regress(df, optHyperparam=False):
         for leaves in [3, 8, 15]: #[6,7,8,9,10,12, 14, 15]:
             for decrease in [ 1e-8, 1e-10]: 
                 for nEst in [50,120]: #[50,90,120,140]: 
-                        for depth in [8, 15, 25]:
+                        for depth in [8, 15]: #8, 15, 25
                             # construct rf model
                             regrn = sklearn.ensemble.RandomForestRegressor(min_samples_leaf=leaves, \
                                   max_depth = depth, min_impurity_decrease=decrease, n_estimators = nEst)
                             # train
                             regrn.fit(X_train, y_train)
                             # test set performance
-                            score = regrn.score(X_test,y_test)
+                            score = regrn.score(X_test,y_test)             
                             print(f"[INFO] score={score:0.3f}, leaves={leaves}, decrease={decrease}, nEst = {nEst}, depth={depth}")
                             # choose min leaves in terminal node and node impurity
                             
@@ -196,7 +196,7 @@ def regress(df, optHyperparam=False):
     #old configuration was leaves = 6, decrease 1e-6, nEst = 50
     leaves = 4
     decrease = 1e-8
-    depth = 25 #25
+    depth = 25
     nEst = 120
     # construct rf model
     regrn = sklearn.ensemble.RandomForestRegressor(min_samples_leaf=leaves, max_depth=depth, \
@@ -450,7 +450,7 @@ df_wSpec =  load_data(dfPath, pwsPath)
 #further added nlcd to drop list since doesn't really make sense if focusing on fia plots
 droppedVarsList = ['dry_season_length','t_mean','AI','t_std','ppt_lte_100','elevation', 
                 'HAND','restrictive_depth','canopy_height','Sr','root_depth','bulk_density',
-                'ppt_mean','agb','theta_third_bar','clay','basal_area','dist_to_water','p50','gpmax']
+                'vpd_std','agb','theta_third_bar','clay','basal_area','dist_to_water','p50','gpmax']
 df_wSpec = cleanup_data(df_wSpec, droppedVarsList)
 
 #remove pixels with NLCD status that is not woody
@@ -500,7 +500,7 @@ pwsVec = df_wSpec['pws']
 specVec = df_wSpec['species']
 pwsPred = np.zeros(pwsVec.shape)
 specCount = df_wSpec['species'].value_counts()
-minFreq = 2
+minFreq = 5
 for specCode in np.unique(df_wSpec['species']):
     if specCount[specCode] > minFreq:
         #differentiating (obs_i-X)^2 shows that optimal predictor is mean of each cat
@@ -569,7 +569,7 @@ ax1.set_ylabel("Actual PWS", fontsize = 14)
 ax1.set_xlim(0,1)
 ax1.set_ylim(0,1)
 ax1.set_title('Random forest', fontsize = 14)
-ax1.annotate(f"R$^2$={score:0.2f}", (0.63,0.05),xycoords = "axes fraction", 
+ax1.annotate(f"R$^2$={score:0.2f}", (0.61,0.05),xycoords = "axes fraction", 
              fontsize=14, ha = "left")
 ax2.set_box_aspect(1)
 ax2.scatter(pwsPred, pwsVec, s = 1, alpha = 0.4, color='k')
@@ -577,7 +577,7 @@ ax2.set_xlabel("Predicted PWS", fontsize = 14)
 ax2.set_xlim(0,1)
 ax2.set_ylim(0,1)
 ax2.set_title('Species mean', fontsize = 14)
-ax2.annotate(f"R$^2$={coeffDeterm:0.2f}", (0.63,0.05),xycoords = "axes fraction", 
+ax2.annotate(f"R$^2$={coeffDeterm:0.2f}", (0.61,0.05),xycoords = "axes fraction", 
              fontsize=14, ha = "left")
 fig.tight_layout()
 plt.show()
