@@ -196,7 +196,7 @@ def regress(df, optHyperparam=False):
     #old configuration was leaves = 6, decrease 1e-6, nEst = 50
     leaves = 4
     decrease = 1e-8
-    depth = 25
+    depth = 8
     nEst = 120
     # construct rf model
     regrn = sklearn.ensemble.RandomForestRegressor(min_samples_leaf=leaves, max_depth=depth, \
@@ -443,7 +443,8 @@ plt.rcParams.update({'font.size': 18})
 
 #%% Load data
 dfPath = os.path.join(dirs.dir_data, 'inputFeatures_wgNATSGO_wBA_wHAND.h5')
-pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas_4monthslag.tif'
+pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas_nonorm_4monthslag_exact6years.tif'
+#pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas_4monthslag.tif'
 df_wSpec =  load_data(dfPath, pwsPath)
 
 #sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.75, see pickFeatures.py
@@ -451,6 +452,7 @@ df_wSpec =  load_data(dfPath, pwsPath)
 droppedVarsList = ['dry_season_length','t_mean','AI','t_std','ppt_lte_100','elevation', 
                 'HAND','restrictive_depth','canopy_height','Sr','root_depth','bulk_density',
                 'vpd_std','agb','theta_third_bar','clay','basal_area','dist_to_water','p50','gpmax']
+droppedVarsList = droppedVarsList + ['g1','c','isohydricity']
 df_wSpec = cleanup_data(df_wSpec, droppedVarsList)
 
 #remove pixels with NLCD status that is not woody
@@ -566,16 +568,16 @@ ax1.scatter(y_hat, y_test, s = 1, alpha = 0.4, color='k')
 ax1.set_box_aspect(1)
 ax1.set_xlabel("Predicted PWS", fontsize = 14)
 ax1.set_ylabel("Actual PWS", fontsize = 14)
-ax1.set_xlim(0,1)
-ax1.set_ylim(0,1)
+ax1.set_xlim(0,7)
+ax1.set_ylim(0,7)
 ax1.set_title('Random forest', fontsize = 14)
 ax1.annotate(f"R$^2$={score:0.2f}", (0.61,0.05),xycoords = "axes fraction", 
              fontsize=14, ha = "left")
 ax2.set_box_aspect(1)
 ax2.scatter(pwsPred, pwsVec, s = 1, alpha = 0.4, color='k')
 ax2.set_xlabel("Predicted PWS", fontsize = 14)
-ax2.set_xlim(0,1)
-ax2.set_ylim(0,1)
+ax2.set_xlim(0,7)
+ax2.set_ylim(0,7)
 ax2.set_title('Species mean', fontsize = 14)
 ax2.annotate(f"R$^2$={coeffDeterm:0.2f}", (0.61,0.05),xycoords = "axes fraction", 
              fontsize=14, ha = "left")

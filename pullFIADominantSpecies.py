@@ -234,43 +234,4 @@ dataset.GetRasterBand(1).WriteArray(FIALonMap)
 dataset.FlushCache()#Writetodisk.
 dataset=None
 
-'''Now repeat with P50 file to make sure gets fewer points
-
-# write function and make site ID
-lonInd = np.floor(combdf['LON']*40)
-latInd = np.floor(combdf['LAT']*40)
-cheapSiteID = lonInd*1e5 + latInd 
-p50df['siteID'] = cheapSiteID
-
-#then try to find dominant locations in FIA_traits_Alex
-p50Locs = pd.DataFrame()
-noGoodP50Cnt = 0
-troublePix = 0
-for unSite in p50df['siteID'].unique(): 
-    sitedf = p50df[p50df['siteID'] == unSite]
-    if len(sitedf) == 1:
-        p50Locs = pd.concat([p50Locs, sitedf])
-    else:
-        #if multiple years of meas at same site, pick the most recent
-        if sitedf['measyr'].nunique() > 1:
-            sitedf = sitedf[sitedf['measyr'] == sitedf['measyr'].max()]
-        #note that if there's two sites within 4 km, they can have the same 
-        #species across the two sites, and harder to check which is dominant
-        #check for this and treat the whole set-up differently then
-        if sitedf['FORTYPCD'].nunique() < len(sitedf):
-            ##raise Exception('seems to be a repeated forest type')
-            troublePix += 1
-            continue
-            ##give up on this for now, fixonly if decide to use this file.
-        #check if one species is dominant in terms of basal area
-        if sitedf['BA trait coverage'].max()>0.75: 
-            #if len(sitedf['BA trait coverage']>0.75)>1:
-            #    raise Exception('Multiple dominant species are impossible')
-            p50Locs = pd.concat([p50Locs, sitedf[sitedf['BA trait coverage']>0.75] ])
-        else:
-            noGoodP50Cnt += 1
-#indeed this is only about 25,000 locations, so don't use this
-'''
-
-
 
