@@ -42,7 +42,7 @@ PWS domain
 '''
 
 #Load PWS lats and lons, geotransform
-ds = gdal.Open('G:/My Drive/0000WorkComputer/dataStanford/PWSDrivers/PWS_through2021_allSeas_nonorm_4monthslag.tif')
+ds = gdal.Open('G:/My Drive/0000WorkComputer/dataStanford/PWSCalc/PWS_through2021_allSeas_nonorm_4monthslag_exact6years.tif')
 gt = ds.GetGeoTransform()
 pws = ds.GetRasterBand(1).ReadAsArray()
 pws_y,pws_x = pws.shape
@@ -164,6 +164,6 @@ ax1 = sns.displot( topDomLocs, x='pws', hue='species', kind='kde', common_norm=F
 sns.kdeplot(rfLocs['pws'], ax=ax1, color='k', bw_adjust=0.75)
 plt.ylabel("Density", size=18); plt.xticks(fontsize=16)
 plt.xlabel("PWS", size=18); plt.yticks([], fontsize=16)
-plt.xlim(0,7)
+plt.xlim(0,1)
 plt.legend(legLabels, loc="lower center", bbox_to_anchor=(0.5,-0.5), ncol=2, title=None, fontsize=18)
 #plt.savefig("../figures/PWSDriversPaper/PWSkdesbyspecies.jpeg", dpi=300)
