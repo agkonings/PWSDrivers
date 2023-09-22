@@ -42,7 +42,7 @@ PWS domain
 '''
 
 #Load PWS lats and lons, geotransform
-ds = gdal.Open('G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas_nonorm_4monthslag_exact6years.tif')
+ds = gdal.Open('G:/My Drive/0000WorkComputer/dataStanford/PWSDrivers/PWS_through2021_allSeas_nonorm_4monthslag.tif')
 gt = ds.GetGeoTransform()
 pws = ds.GetRasterBand(1).ReadAsArray()
 pws_y,pws_x = pws.shape

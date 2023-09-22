@@ -73,7 +73,7 @@ rfLocs = pd.read_pickle(pickleLoc)
 rfLocs = rfLocs.rename(columns={"lat": "LAT", "lon": "LON"}, errors="raise")
                 
 #save each dataframe of locations to PWS grid
-def makeGridWithPlots(df, gridCol, gt, pws):
+def makeGridWithPlots(df, gt, pws):
     '''
     Parameters
     ----------
@@ -99,7 +99,7 @@ def makeGridWithPlots(df, gridCol, gt, pws):
     dfMasked = df.copy()[mask]
     #create array, and assign 
     outGrid = np.zeros(pws.shape) * np.nan
-    outGrid[indY, indX] = 1 
+    outGrid[indY, indX] = 1
     outGrid[np.isnan(pws)] = np.nan
     return outGrid
 

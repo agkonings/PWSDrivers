@@ -205,6 +205,8 @@ def regress(df, optHyperparam=False):
     regrn.fit(X_train, y_train)
     # test set performance
     score = regrn.score(X_test,y_test)
+    scoreTrain = regrn.score(X_train, y_train)
+    print(f"[INFOTrain] score={scoreTrain:0.3f}, leaves={leaves}, decrease={decrease}")
     print(f"[INFO] score={score:0.3f}, leaves={leaves}, decrease={decrease}")
     
     # assemble all importance with feature names and colors
@@ -443,8 +445,7 @@ plt.rcParams.update({'font.size': 18})
 
 #%% Load data
 dfPath = os.path.join(dirs.dir_data, 'inputFeatures_wgNATSGO_wBA_wHAND.h5')
-pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas_nonorm_4monthslag_exact6years.tif'
-#pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas_4monthslag.tif'
+pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas_4monthslag.tif'
 df_wSpec =  load_data(dfPath, pwsPath)
 
 #sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.75, see pickFeatures.py
