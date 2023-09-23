@@ -168,7 +168,7 @@ lonInd = np.round( (df_wSpec['lon'].to_numpy() - gt[0])/gt[1] ).astype(int)
 dfDFMC = df_wSpec.copy()
 dfDFMC['mnDFMC'] = mnDFMCMap[latInd, lonInd]
 dfDFMC['stdDFMC'] = stdDFMCMap[latInd, lonInd]
-dfDFMC = dfDFMC[['mnDFMC','stdDFMC','vpd_mean','ppt_cv','ppt_mean']]        
+dfDFMC = dfDFMC[['mnDFMC','stdDFMC','vpd_mean','ppt_cv','ppt_mean','pws']]        
 
 corrMatDFMC = dfDFMC.corr()
 corrMatDFMC = corrMatDFMC.drop(['vpd_mean','ppt_cv','ppt_mean'], axis=1) 
@@ -179,14 +179,13 @@ sns.heatmap(np.round(corrMatDFMC, decimals=2),
         yticklabels=prettify_names(corrMatDFMC.index.values),
         cmap = r2bcmap, vmin=-0.4, vmax=0.4,
         annot=True,  fmt=".2f", annot_kws={'size': 10})
-plt.savefig("../figures/PWSDriversPaper/crossCorrDFMCStats.jpeg", dpi=300)
-
+#plt.savefig("../figures/PWSDriversPaper/crossCorrDFMCStats.jpeg", dpi=300)
 
 '''
 Make general cross-correlation map
 '''
 df_wSpec.drop(columns=['species','lat','lon','nlcd'], inplace=True)
-columnOrder = ['pws', 'vpd_mean', 'vpd_std', 'ppt_cv', 'ndvi', 'isohydricity', 'c', 'g1', 'sand', 'ks', 'AWS', 'aspect',
+columnOrder = ['pws', 'vpd_mean', 'ppt_mean', 'ppt_cv', 'ndvi', 'clay', 'ks', 'Sr', 'aspect',
        'slope', 'twi']
 df_wSpec = df_wSpec[columnOrder] #re-order manually to make easier to read
 corrMat = df_wSpec.corr()
@@ -203,7 +202,7 @@ plt.savefig("../figures/PWSDriversPaper/crossCorr.jpeg", dpi=300)
 '''
 Make climate cross-correlation map
 '''
-df_clim = df_wSpec[['ndvi','vpd_mean','vpd_std','ppt_cv']]
+df_clim = df_wSpec[['ndvi','vpd_mean','ppt_mean','ppt_cv']]
 corrClim = df_clim.corr()
 mask = np.triu(np.ones_like(corrClim, dtype=bool))
 fig, ax = plt.subplots()

@@ -134,7 +134,7 @@ def prettify_names(names):
                  "vanGen_n":"van Genuchten n",
                  "AWS":"Avail water storage",
                  "AI":"Aridity Index",
-                 "Sr": "RZ water storage",
+                 "Sr": "RZWS",
                  "restrictive_depth": "Restricton depth",
                  "species":"species",
                  "basal_area": "Basal area",
@@ -196,7 +196,7 @@ def regress(df, optHyperparam=False):
     #old configuration was leaves = 6, decrease 1e-6, nEst = 50
     leaves = 4
     decrease = 1e-8
-    depth = 8
+    depth = 6
     nEst = 120
     # construct rf model
     regrn = sklearn.ensemble.RandomForestRegressor(min_samples_leaf=leaves, max_depth=depth, \
@@ -270,8 +270,8 @@ def plot_preds_actual(X_test, y_test, regrn, score):
     ax.scatter(y_hat, y_test, s = 1, alpha = 0.05, color='k')
     ax.set_xlabel("Predicted PWS", fontsize = 18)
     ax.set_ylabel("Actual PWS", fontsize = 18)
-    ax.set_xlim(0,1.6)
-    ax.set_ylim(0,1.6)
+    ax.set_xlim(0,1)
+    ax.set_ylim(0,1)
     ax.annotate(f"R$^2$={score:0.2f}", (0.1,0.9),xycoords = "axes fraction", ha = "left")
     return ax
 
@@ -344,18 +344,18 @@ def plot_importance(imp):
 
     imp.plot.barh(y = "importance",x="symbol",color = imp.color, edgecolor = "grey", ax = ax, fontsize = 18)
 
-    legend_elements = [matplotlib.patches.Patch(facecolor=green, edgecolor='grey',
-                             label='Plant'), 
-                       matplotlib.patches.Patch(facecolor=brown, edgecolor='grey',
-                             label='Soil'), 
+    legend_elements = [matplotlib.patches.Patch(facecolor=blue, edgecolor='grey',
+                             label='Climate'),
+                       matplotlib.patches.Patch(facecolor=green, edgecolor='grey',
+                             label='Veg density'),         
                        matplotlib.patches.Patch(facecolor=yellow, edgecolor='grey',
                              label='Topography'), 
-                       matplotlib.patches.Patch(facecolor=blue, edgecolor='grey',
-                             label='Climate')]
-    ax.legend(handles=legend_elements, fontsize = 18)
+                       matplotlib.patches.Patch(facecolor=brown, edgecolor='grey',
+                             label='Soil')]
+    ax.legend(handles=legend_elements, fontsize = 18, loc='lower right')
     ax.set_xlabel("Variable importance", fontsize = 18)
     ax.set_ylabel("")
-    ax.set_xlim(0,0.60)
+    ax.set_xlim(0,0.50)
 
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
@@ -373,7 +373,7 @@ def plot_importance_by_category(imp, dropVars = None):
     
     green, brown, blue, yellow, plant, soil, climate, topo \
                                             = get_categories_and_colors()
-    combined = pd.DataFrame({"category":["plant","climate","soil","topography"], \
+    combined = pd.DataFrame({"category":["Veg density","Climate","Soil","Topography"], \
                              "color":[green, blue, brown, yellow]})
     combined = combined.merge(imp.groupby("color").sum(), on = "color")
     
@@ -445,15 +445,17 @@ plt.rcParams.update({'font.size': 18})
 
 #%% Load data
 dfPath = os.path.join(dirs.dir_data, 'inputFeatures_wgNATSGO_wBA_wHAND.h5')
-pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas_4monthslag.tif'
+pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWSCalc/PWS_through2021_allSeas_nonorm_4monthslag_exact6years.tif'
 df_wSpec =  load_data(dfPath, pwsPath)
 
 #sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.75, see pickFeatures.py
 #further added nlcd to drop list since doesn't really make sense if focusing on fia plots
-droppedVarsList = ['dry_season_length','t_mean','AI','t_std','ppt_lte_100','elevation', 
-                'HAND','restrictive_depth','canopy_height','Sr','root_depth','bulk_density',
-                'vpd_std','agb','theta_third_bar','clay','basal_area','dist_to_water','p50','gpmax']
+droppedVarsList = ['elevation','dry_season_length','t_mean','AI','t_std','ppt_lte_100',
+                'canopy_height', 'twi','restrictive_depth','bulk_density',
+                'dist_to_water','basal_area','theta_third_bar', 'AWS','sand',
+                'agb','p50','gpmax','vpd_std','root_depth']
 droppedVarsList = droppedVarsList + ['g1','c','isohydricity']
+#droppedVarsList.remove(['elevation','HAND','restrictive_depth','canopy_height','Sr','root_depth','bulk_density'])
 df_wSpec = cleanup_data(df_wSpec, droppedVarsList)
 
 #remove pixels with NLCD status that is not woody
@@ -487,7 +489,7 @@ X_test, y_test, regrn, score,  imp = regress(df_noSpec, optHyperparam=False)
 ax = plot_corr_feats(df_noSpec)
 axImp = plot_importance(imp)
 ax = plot_importance_by_category(imp)
-ax = plot_importance_by_category(imp, dropVars=['ndvi','vpd_mean','ppt_cv'])
+ax = plot_importance_by_category(imp, dropVars=['ndvi','vpd_mean','ppt_cv','ppt_mean'])
 ax = plot_importance_plants(imp)
 
 '''
@@ -569,18 +571,18 @@ ax1.scatter(y_hat, y_test, s = 1, alpha = 0.4, color='k')
 ax1.set_box_aspect(1)
 ax1.set_xlabel("Predicted PWS", fontsize = 14)
 ax1.set_ylabel("Actual PWS", fontsize = 14)
-ax1.set_xlim(0,7)
-ax1.set_ylim(0,7)
+ax1.set_xlim(0,6)
+ax1.set_ylim(0,6)
 ax1.set_title('Random forest', fontsize = 14)
-ax1.annotate(f"R$^2$={score:0.2f}", (0.61,0.05),xycoords = "axes fraction", 
+ax1.annotate(f"R$^2$={score:0.2f}", (0.61,0.06),xycoords = "axes fraction", 
              fontsize=14, ha = "left")
 ax2.set_box_aspect(1)
 ax2.scatter(pwsPred, pwsVec, s = 1, alpha = 0.4, color='k')
 ax2.set_xlabel("Predicted PWS", fontsize = 14)
-ax2.set_xlim(0,7)
-ax2.set_ylim(0,7)
+ax2.set_xlim(0,6)
+ax2.set_ylim(0,6)
 ax2.set_title('Species mean', fontsize = 14)
-ax2.annotate(f"R$^2$={coeffDeterm:0.2f}", (0.61,0.05),xycoords = "axes fraction", 
+ax2.annotate(f"R$^2$={coeffDeterm:0.2f}", (0.61,0.06),xycoords = "axes fraction", 
              fontsize=14, ha = "left")
 fig.tight_layout()
 plt.show()
