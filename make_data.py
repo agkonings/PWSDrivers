@@ -137,8 +137,8 @@ def create_h5(store_path):
     keys = ['sand','clay','ks','bulk_density','theta_third_bar','isohydricity',\
         'root_depth','canopy_height','p50','gpmax', 'c','g1','nlcd',
         "elevation","aspect","slope","twi","dry_season_length","ndvi",\
-            "vpd_mean","vpd_std", "dist_to_water","agb","ppt_mean","ppt_cv",\
-        "t_mean","t_std","ppt_lte_100", "AI","Sr","AWS", "restrictive_depth", "species", "basal_area", "lon","lat","HAND"]
+            "vpd_mean","vpd_cv", "dist_to_water","agb","ppt_mean","ppt_cv",\
+        "t_mean","t_cv","ppt_lte_100", "AI","Sr","AWS", "restrictive_depth", "species", "basal_area", "lon","lat","HAND"]
     
     array = np.zeros((len(keys), data['pws'].shape[0],data['pws'].shape[1])).astype('float')
     #array[0] = data['pws']
@@ -166,17 +166,18 @@ def create_h5(store_path):
     array[17] = get_value( os.path.join(regridDir, 'fireSeasonLength.tif'), 1)    
     array[18] = get_value( os.path.join(regridDir, 'ndvi_mean.tif'), 1)    
     array[19] = get_value( os.path.join(regridDir, 'vpd_mean.tif'), 1)    
-    array[20] = get_value( os.path.join(regridDir, 'vpdStd.tif'), 1)        
-    #vpdStd = get_value( os.path.join(regridDir, 'vpdStd.tif'), 1)        
-    #array[20] = vpdStd/array[19]
+    #array[20] = get_value( os.path.join(regridDir, 'vpdStd.tif'), 1)        
+    vpdStd = get_value( os.path.join(regridDir, 'vpdStd.tif'), 1)        
+    array[20] = vpdStd/array[19]
     array[21] = get_value( os.path.join(regridDir, 'distance_to_water_bodies.tif'), 1)    
     array[22] = get_value( os.path.join(regridDir, 'agb_2020.tif'), 1)    
-    array[23] = get_value( os.path.join(regridDir, 'pptMean.tif'), 1)    
+    array[23] = get_value( os.path.join(regridDir, 'pptMean.tif'), 1)        
     pptStd = get_value( os.path.join(regridDir, 'pptStd.tif'), 1)
     array[24] = pptStd/array[23]  
     #note different bands due to bug in file creation
     array[25] = get_value( os.path.join(regridDir, 'tMean.tif'), 2)    
-    array[26] = get_value( os.path.join(regridDir, 'tStd.tif'), 2)    
+    tStd = get_value( os.path.join(regridDir, 'tStd.tif'), 2)    
+    array[26] = tStd/array[25]
     array[27] = get_value( os.path.join(regridDir, 'ppt_lte_100.tif'), 1)    
     array[28] = get_value( os.path.join(regridDir, 'aridity_index.tif'), 1)
     array[29] = get_value( os.path.join(regridDir, 'Sr_2020_unmasked_4km_westernUS.tif'), 1)    

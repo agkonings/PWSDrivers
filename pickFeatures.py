@@ -56,59 +56,47 @@ def load_data(dfPath, pwsPath):
     
     return df
 
-dfPath = os.path.join('C:/repos/data/inputFeatures_wgNATSGO_wBA.h5')
-pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas_4monthslag.tif'
-#pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas.tif'
+dfPath = os.path.join('C:/repos/data/inputFeatures_wgNATSGO_wBA_wHAND.h5')
+pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWSCalc/PWS_through2021_allSeas_nonorm_4monthslag_exact6years.tif'
 df =  load_data(dfPath, pwsPath)
 
-#find data with valid PWS
-for feat in df.drop('pws', axis=1).columns:
-    nMissing = np.sum( ~np.isnan(df[feat]) & ~np.isnan(df['pws']) )
-    print('Valid data for feat ' + str(feat) + ': ' + str(nMissing))                        
+#remove pixels with NLCD status that is not woody
+df = df[df['nlcd']<70] #unique values are 41, 42, 43, 52
+#remove mixed forest
+df = df[df['nlcd'] != 43] #unique values are 41, 42, 43, 52
 
-#figure out how much overlap, what are the big losses?
-#Big loses: P50, gpmax, g1, species, Sr
-df.drop(['isohydricity','root_depth','p50','gpmax','c','g1','species','lat','lon'], axis = 1, inplace=True)
+#drop traits, because that's too complicated to interpet/too coarse anyway
+df.drop(['isohydricity','root_depth','p50','gpmax','c','g1','lat','lon'], axis = 1, inplace=True)
+#drop old holdover things from Krishna's fire season work that don't apply year round or make sense for forests
+specDropList = ['dry_season_length','ppt_lte_100','basal_area','nlcd','elevation']
+df.drop(specDropList, axis = 1, inplace=True)
+df.dropna(inplace = True)
 
 #then calculate cross correation with PWS 
-corrMat = df.corr(method='spearman')
+df.dropna(inplace=True) #remove points without species data/not at FIA
+corrMat = df.corr()
 
-'''
-for simplicity, just manually look at what is highest wth PWS
-allow nothing corss-correalted greater than 0.5
-keep VPD_mean, ndvi, 
-then VPD_CV too cross-correlated, t_mean too cross-correlated, canopy_height too, dry_season_length
-drop AI because corss-corr with VPD_min by 0.63. controversial
-etc....two ks, ppt_cv with only slightly above 0.5 correlation.
-so with threshold of 0.5 hard cut-off what is left is
-VPD_min, NDVI, bulk_density, dist_to_water, nlcd, elevation, sand, clay
-'''
-'''
-If redo with spearman
-vpd_mean, ndvi, aws, theta_third_bar, ppt_cv, restrictive_depth,
-sand, clay, ks, bulk_density, theta_third_bar,'nlcd','elevation', 'aspect','twi'
-dist_to_water
+error
 
-'''
 
-'''
-want to repeat with looking at what is cross-correlated with speices
-and where have data that overlaps with species 
-'''
-
-#calculate with all dominant species
-df_wSpec =  load_data(dfPath, pwsPath)
-df_wSpec.drop(['elevation','isohydricity','root_depth','p50','gpmax','c','g1','species','lat','lon'], axis = 1, inplace=True)
-df_wSpec.dropna(inplace = True)
-
-corrMatSpec = df_wSpec.corr()
 #manually investigated as long as R<0.75
-specDropList = ['dry_season_length','t_mean','AI','ppt_lte_100']
-df_wSpec.drop(specDropList, axis = 1, inplace=True)
-df_wSpec.dropna(inplace = True)
+np.abs(corrMat['pws']).sort_values()
+'''removed by manual inspection of cross-corr'
+(vpd_mean, t_mean) = 0.84, remove t_mean,
+(vpd_mean, vpd_cv) = 0.74 remove vpd_std
+(slope, HAND) = 0.85 remove HAND
+(AI, ppt_mean ) = 0.97
+(ndvi, canopy_height) = 0.72
+(ndvi, ppt_mean) = 0.73
+(ndvi, agb) = 0.75
+(clay, sand) = 0.81
 
+NB: also looked at VPD-threemonthmax intead of vpd_mean (highly correlated)
+but did worse in overall RF
 
+then git say adjusted to have R< 0.6 metric for corss-correlation
 
+'''
 def plot_all_2Ddensities(df):
     columns = df.columns
     

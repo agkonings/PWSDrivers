@@ -196,7 +196,7 @@ def regress(df, optHyperparam=False):
     #old configuration was leaves = 6, decrease 1e-6, nEst = 50
     leaves = 4
     decrease = 1e-8
-    depth = 6
+    depth = 8
     nEst = 120
     # construct rf model
     regrn = sklearn.ensemble.RandomForestRegressor(min_samples_leaf=leaves, max_depth=depth, \
@@ -361,7 +361,7 @@ def plot_importance(imp):
     ax.spines['top'].set_visible(False)
     
     plt.tight_layout()
-    return ax
+    return plt
 
 def plot_importance_by_category(imp, dropVars = None):
     """
@@ -394,6 +394,7 @@ def plot_importance_by_category(imp, dropVars = None):
     plt.tight_layout()
     
     print(combined)
+    return plt
     
 def plot_importance_plants(imp):
     '''
@@ -450,10 +451,10 @@ df_wSpec =  load_data(dfPath, pwsPath)
 
 #sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.75, see pickFeatures.py
 #further added nlcd to drop list since doesn't really make sense if focusing on fia plots
-droppedVarsList = ['elevation','dry_season_length','t_mean','AI','t_std','ppt_lte_100',
-                'canopy_height', 'twi','restrictive_depth','bulk_density',
+droppedVarsList = ['elevation','dry_season_length','t_mean','ppt_mean','t_cv','ppt_lte_100',
+                'canopy_height', 'HAND','restrictive_depth','clay',
                 'dist_to_water','basal_area','theta_third_bar', 'AWS','sand',
-                'agb','p50','gpmax','vpd_std','root_depth']
+                'agb','p50','gpmax','vpd_cv','root_depth']
 droppedVarsList = droppedVarsList + ['g1','c','isohydricity']
 #droppedVarsList.remove(['elevation','HAND','restrictive_depth','canopy_height','Sr','root_depth','bulk_density'])
 df_wSpec = cleanup_data(df_wSpec, droppedVarsList)
@@ -487,9 +488,10 @@ now actually train model on everything except the species
 X_test, y_test, regrn, score,  imp = regress(df_noSpec, optHyperparam=False)  
 # make plots
 ax = plot_corr_feats(df_noSpec)
-axImp = plot_importance(imp)
-ax = plot_importance_by_category(imp)
-ax = plot_importance_by_category(imp, dropVars=['ndvi','vpd_mean','ppt_cv','ppt_mean'])
+pltImp = plot_importance(imp)
+pltImp.savefig("../figures/PWSDriversPaper/importance.jpeg", dpi=300)
+pltImpCat = plot_importance_by_category(imp)
+pltImpCat.savefig("../figures/PWSDriversPaper/importanceCategories.jpeg", dpi=300)
 ax = plot_importance_plants(imp)
 
 '''
@@ -524,43 +526,6 @@ print('amount explained with ONLY species info ' + str(coeffDeterm))
 print('fraction explained by species' + str(coeffDeterm/score))
 
 
-'''See if 250m vs. 4km PWS makes a difference'''
-#create merged dataframes with subset of sites where have 250m PWS
-PWS250mLoc = '../data/PWS_250m.pkl'
-df_noSpec_PWS250m = pd.read_pickle(PWS250mLoc)
-df_noSpec_PWS250m.rename(columns={"PWS": "PWS_250m"}, inplace=True)
-df_250m = df_wSpec.copy()
-df_250m = df_250m.merge(df_noSpec_PWS250m, left_on=['lat','lon'], right_on=['lat','lon'], how='inner')
-
-pwsVec_250m = df_250m['PWS_250m']
-pwsVec_4km = df_250m['pws']
-specVec = df_250m['species']
-pwsPred_250m = np.zeros(pwsVec_250m.shape)
-pwsPred_4km = np.zeros(pwsVec_250m.shape)
-specCount = df_wSpec['species'].value_counts()
-minFreq = 2
-for specCode in np.unique(df_wSpec['species']):
-    if specCount[specCode] > minFreq:
-        #differentiating (obs_i-X)^2 shows that optimal predictor is mean of each cat
-        thisMean = np.mean( pwsVec_4km[specVec == specCode] )
-        pwsPred_4km[specVec == specCode] = thisMean
-        #redo at 250m
-        thisMean = np.mean( pwsVec_250m[specVec == specCode] )
-        pwsPred_250m[specVec == specCode] = thisMean
-        
-
-#next line is hack to make sure species with less than minFreq occurences don't count
-def calcCoeffDeterm(pwsVec, pwsPred):
-    pwsVec[pwsPred == 0] = 0
-    resPred = pwsVec - pwsPred
-    SSres = np.sum(resPred**2)
-    SStot = np.sum( (pwsVec - np.mean(pwsVec))**2 ) #total sum of squares
-    coeffDeterm = 1 - SSres/SStot
-    return coeffDeterm
-
-coeffDeterm_4km = calcCoeffDeterm(pwsVec_4km, pwsPred_4km)
-coeffDeterm_250m = calcCoeffDeterm(pwsVec_250m, pwsPred_250m)
-
 
 
 '''Plot Figure 3 with R2 for both RF and species'''
@@ -585,24 +550,6 @@ ax2.set_title('Species mean', fontsize = 14)
 ax2.annotate(f"R$^2$={coeffDeterm:0.2f}", (0.61,0.06),xycoords = "axes fraction", 
              fontsize=14, ha = "left")
 fig.tight_layout()
+plt.savefig("../figures/PWSDriversPaper/scatterPlotsModels.jpeg", dpi=300)
 plt.show()
 
-
-
-fig = plt.figure()
-ax = fig.add_subplot(1, 1, 1, projection="scatter_density")
-ax.scatter_density(y_hat, y_test, cmap=plt.cm.Blues)
-#ax.xlabel("Predicted PWS", fontsize = 14)
-#ax.ylabel("Actual PWS", fontsize = 14)
-#ax.set_xlim(0,1.4)
-#ax.set_ylim(0,1.4)
-#ax.set_title('Random forest', fontsize = 14)
-
-fig = plt.figure()
-ax = fig.add_subplot(1, 1, 1, projection="scatter_density")
-ax.scatter_density(pwsPred, pwsVec, cmap=plt.cm.Reds)
-#ax.xlabel("Predicted PWS", fontsize = 14)
-#ax.ylabel("Actual PWS", fontsize = 14)
-#ax.set_xlim(0,1.4)
-#ax.set_ylim(0,1.4)
-#ax.set_title('Species mean', fontsize = 14)
