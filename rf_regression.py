@@ -133,8 +133,8 @@ def prettify_names(names):
                  "theta_third_bar": "$\psi_{0.3}$",
                  "vanGen_n":"van Genuchten n",
                  "AWS":"Avail water storage",
-                 "AI":"Aridity Index",
-                 "Sr": "RZWS",
+                 "AI":"Aridity index",
+                 "Sr": "RZ storage",
                  "restrictive_depth": "Restricton depth",
                  "species":"species",
                  "basal_area": "Basal area",
@@ -430,15 +430,25 @@ def plot_pdp(regr, X_test):
     features = np.arange(X_test.shape[1]) #[2,3,7, 12, 4, 13, 11, 18]
     feature_names = list(X_test.columns[features])
     feature_names = prettify_names(feature_names)
-    for feature, feature_name in zip(features, feature_names):
-        pd_results = sklearn.inspection.partial_dependence(regr, X_test, feature)
-        fig, ax = plt.subplots(figsize = (4,4))
-        ax.plot(pd_results[1][0], pd_results[0][0])
+    ftCnt = 0
+    fig, axs = plt.subplots(nrows=4, ncols=3, figsize = (12,9))
+    plt.subplots_adjust(hspace=0.7)
+    plt.subplots_adjust(wspace=0.5)
+    for feature, feature_name, ax in zip(features, feature_names, axs.ravel()):
+        pd_results = sklearn.inspection.partial_dependence(regr, X_test, feature)       
+        #fig, ax = plt.subplots(figsize = (4,4))        
+        #plt.subplot(5,2,ftCnt)
+        ax.plot(pd_results[1][0], pd_results[0][0], color="black")
         ax.set_xlabel(feature_name, fontsize = 18)
-        ax.set_ylabel("Plant-water sensitivity", fontsize = 18)
-        plt.xticks(fontsize = 16)
-        plt.yticks(fontsize = 16)
-        plt.show()
+        if np.mod(ftCnt, 3) == 0:
+            ax.set_ylabel("PWS", fontsize = 18)
+        #axs[rowCnt, colCnt]
+        ax.tick_params(axis='both', labelsize = 16)
+        ftCnt += 1
+    
+    fig.delaxes(axs[3][1])
+    fig.delaxes(axs[3][2])
+    return plt
     
     
 plt.rcParams.update({'font.size': 18})
@@ -493,6 +503,8 @@ pltImp.savefig("../figures/PWSDriversPaper/importance.jpeg", dpi=300)
 pltImpCat = plot_importance_by_category(imp)
 pltImpCat.savefig("../figures/PWSDriversPaper/importanceCategories.jpeg", dpi=300)
 ax = plot_importance_plants(imp)
+pltPDP = plot_pdp(regrn, X_test)
+pltImpCat.savefig("../figures/PWSDriversPaper/pdps.jpeg", dpi=300)
 
 '''
 now check how explanatory power compares if don't have species vs. if have 
