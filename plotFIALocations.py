@@ -107,7 +107,7 @@ domSpecMap = makeGridWithPlots(rfLocs, gt, pws)
 FIAPlotMap = makeGridWithPlots(combdf, gt, pws)
 
 #plot
-pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_allSeas.tif'
+pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWSCalc/PWS_through2021_allSeas_nonorm_4monthslag_exact6years.tif'
 pwsMap =rxr.open_rasterio(pwsPath, masked=True).squeeze()
 pwsExtent = plotting_extent(pwsMap, pwsMap.rio.transform())
 statesPath = "C:/repos/data/cb_2018_us_state_5m/cb_2018_us_state_5m.shp"
