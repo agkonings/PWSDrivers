@@ -85,7 +85,7 @@ combdf['SPCD'].value_counts()
 #106 = common Pinyon (Pins edulis)
 #65 = Utah juniper = 7422
 #93 = Engelmann spruce
-#263 = Western Hemlock = 263
+#263 = Western Hemlock = 
 #19 = subalpine fir
 #611 = sweetgum
 #756 = honey mesquite = 5623
@@ -95,6 +95,7 @@ combdf['SPCD'].value_counts()
 #827 = water oak = quercus nigra = 3986
 #814 = Gambel oak = 3793
 #242 = western redcedar = 3723
+#807 = Blue oak = 174
 
 #look at common species at locations where  asingle species dominates FIA plot
 pickleLoc = '../data/dominantLocs.pkl'
