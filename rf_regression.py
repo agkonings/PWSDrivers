@@ -554,6 +554,8 @@ ax1.set_xlim(0,6), ax1.set_ylim(0,6)
 ax1.set_title('Species mean', fontsize = 14)
 ax1.annotate(f"R$^2$={coeffDeterm:0.2f}", (0.61,0.06),xycoords = "axes fraction", 
              fontsize=14, ha = "left")
+ax1.annotate('a)', (-0.2,1.1),xycoords = "axes fraction", 
+             fontsize=14, weight='bold')
 ax2.set_box_aspect(1)
 ax2.scatter(y_hat, y_test, s = 1, alpha = 0.4, color='k')
 ax2.set_xlabel("Predicted PWS", fontsize = 14)
@@ -563,6 +565,8 @@ ax2.yaxis.set_ticks(np.arange(0, 6.2, 1))
 ax2.set_title('Random forest', fontsize = 14)
 ax2.annotate(f"R$^2$={score:0.2f}", (0.61,0.06),xycoords = "axes fraction", 
              fontsize=14, ha = "left")
+ax2.annotate('b)', (-0.2,1.10),xycoords = "axes fraction", 
+             fontsize=14, weight='bold')
 fig.tight_layout()
 plt.savefig("../figures/PWSDriversPaper/scatterPlotsModels.jpeg", dpi=300)
 plt.show()
