@@ -8,6 +8,7 @@ Created on Thu Jun 30 16:08:51 2022
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.lines as mlines
 from osgeo import gdal
 import geopandas as gpd
 import rioxarray as rxr
@@ -15,7 +16,7 @@ import rasterio
 from rasterio.plot import plotting_extent, show
 import pickle
 
-def plot_map(arrayToPlot, pwsExtent, stateBorders, title = None, axMap = None, vmin = None, vmax = None, clrmap = 'YlGnBu', savePath = None):
+def plot_map(arrayToPlot, pwsExtent, stateBorders, axMap = None, vmin = None, vmax = None, clrmap = 'YlGnBu', savePath = None, legCode = None):
     '''make map with state borders'''
     
     #preliminary calculatios
@@ -26,19 +27,23 @@ def plot_map(arrayToPlot, pwsExtent, stateBorders, title = None, axMap = None, v
     if axMap == None:
         fig, axMap = plt.subplots()
     if vmin != None and vmax != None:
-        rasterio.plot.show(arrayToPlot, interpolation='nearest', vmin=vmin, vmax=vmax, extent=pwsExtent, ax=axMap, cmap=clrmap)
+        rasterio.plot.show(arrayToPlot, interpolation='none', vmin=vmin, vmax=vmax, extent=pwsExtent, ax=axMap, cmap=clrmap)
     else:
-        rasterio.plot.show(arrayToPlot, interpolation='nearest', extent=pwsExtent, ax=axMap, cmap=clrmap)
+        rasterio.plot.show(arrayToPlot, interpolation='none', extent=pwsExtent, ax=axMap, cmap=clrmap)
     stateBorders[stateBorders['NAME'].isin(statesList)].boundary.plot(ax=axMap, edgecolor='black', linewidth=0.5) 
-    #im = axMap.get_images()[0]
-    #cbar = plt.colorbar(im, ax=ax) #ticks=range(0,6)
-    #cbar.ax.set_xticklabels([ 'Deciduous','Evergreen','Mixed','Shrub','Grass', 'Pasture'])
-    #plt.title(title)
     axMap.axis('off')
     plt.xticks([])
     plt.yticks([])
+    if legCode == 1:
+        black_circle = mlines.Line2D([], [], color='black', marker='o', linestyle='None',
+                          markersize=8, label='Mixed species')
+        red_circle = mlines.Line2D([], [], color='red', marker='o', linestyle='None',
+                          markersize=8, label='Dominant species')
+        plt.legend(handles=[black_circle, red_circle], loc='lower left')
+
     if savePath != None:
-        plt.savefig(savePath)
+        ax.set_rasterized(True)
+        plt.savefig(savePath, dpi=300, bbox_inches = "tight")
     plt.show() 
     
     
@@ -105,6 +110,11 @@ def makeGridWithPlots(df, gt, pws):
 
 domSpecMap = makeGridWithPlots(rfLocs, gt, pws)
 FIAPlotMap = makeGridWithPlots(combdf, gt, pws)
+#add arrays so you can try to show in one image with different colors
+domSpecMap[np.where(np.isnan(domSpecMap))] = 0
+FIAPlotMap[np.where(np.isnan(FIAPlotMap))] = 0
+combinedMap = domSpecMap + FIAPlotMap
+combinedMap[np.where(combinedMap==0)] = np.nan
 
 #plot
 pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWSCalc/PWS_through2021_allSeas_nonorm_4monthslag_exact6years.tif'
@@ -117,3 +127,13 @@ fig, (ax1, ax2) = plt.subplots(2,1)
 plot_map(domSpecMap, pwsExtent, states, clrmap='Dark2', vmin=0, vmax=1)
 plot_map(FIAPlotMap, pwsExtent, states, clrmap='Dark2', vmin=0, vmax=1)
 
+#plot in a combined figure where red is locations with a dominant species
+#summedMap value of 2, and black is pixels where there is an FIA plot locatin
+#but it doesn't have a dominant species (assumedMap value of 1). Colormap 
+# and vmin/vmax are chosen so that colors work out to black and red
+fig, ax = plt.subplots()
+plot_map(combinedMap, pwsExtent, states, clrmap='hot_r', vmin=-1, vmax=2, 
+         legCode=1, savePath='C:/repos/figures/PWSDriversPaper/plotMaps.jpeg')
+fig, ax = plt.subplots()
+plot_map(combinedMap, pwsExtent, states, clrmap='hot_r', vmin=-1, vmax=2, 
+         legCode=1, savePath='C:/repos/figures/PWSDriversPaper/plotMaps.pdf')
