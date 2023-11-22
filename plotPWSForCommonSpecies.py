@@ -116,35 +116,13 @@ with open(pickleLoc, 'rb') as file:
 #look at common species at actual sites used in study (also filtered for NLCD, data availability)
 pickleLoc = '../data/df_wSpec.pkl'
 rfLocs = pd.read_pickle(pickleLoc)
-rfLocs['species'].value_counts()
+vc = rfLocs['species'].value_counts()
 #five most common among actual sites
 #756 = honey mesquite
 #65 = Utah juniper
 #122 = ponderosa pine
 #202 = Douglas-fir
 #69 = oneseed juniper (juniperus monisperma)
-
-
-'''
-Now before plot, need to add PWS values to dominantLocs, too
-'''
-#calculate array indices into pws array for combdf locations
-indX = np.floor( (dominantLocs['LON']-gt[0])/gt[1] ).to_numpy().astype(int)
-indY = np.floor( (dominantLocs['LAT']-gt[3])/gt[5] ).to_numpy().astype(int)
-#filter out of bounds locations, e.g. outside of rectangular grid
-mask = np.ones(indX.shape, dtype=bool)
-mask[indX < 0] = False
-mask[indX >= pws_x] = False
-mask[indY < 0] = False
-mask[indY > pws_y] = False
-indX = indX[mask]
-indY = indY[mask]
-dominantLocs = dominantLocs[mask]
-
-#add pws value to dominantLocs
-pwsFromDomLoc = pws[indY, indX]
-dominantLocs['PWS'] = pwsFromDomLoc
-dominantLocs.dropna(inplace=True)
 
 '''
 Ok, ready to plot!
@@ -153,7 +131,8 @@ Ok, ready to plot!
 plotSpecList = {202, 122, 65, 756, 69}
 legLabels = ["Douglas-fir", "Ponderosa pine", "Utah juniper", "Honey mesquite", "Oneseed juniper", "All"]
 
-#filter so that only data with plotted species are kept
+#filter dataframe to be used for plotting purposes so that it only 
+#contains sites where the dominant cover is one of the species to be plotted
 topDomLocs = rfLocs.copy()
 noDataRows = topDomLocs.loc[~topDomLocs.species.isin(plotSpecList)]
 topDomLocs.drop(noDataRows.index, inplace=True)
@@ -168,3 +147,20 @@ plt.xlabel("PWS", size=18); plt.yticks([], fontsize=16)
 plt.xlim(0,6)
 plt.legend(legLabels, loc="lower center", bbox_to_anchor=(0.5,-0.5), ncol=2, title=None, fontsize=18)
 #plt.savefig("../figures/PWSDriversPaper/PWSkdesbyspecies.jpeg", dpi=300)
+
+'''
+Calculate standard deviation of species means vs mean standard deviation per species
+for use in paper text
+'''
+stdPerSpecList = []
+mnPerSpecList = []
+for spec in np.unique(rfLocs['species']):
+    if vc[spec] > 50:
+        thisMean = rfLocs[rfLocs['species'] == spec].pws.mean()
+        thisStd = rfLocs[rfLocs['species'] == spec].pws.std()
+        mnPerSpecList.append(thisStd)
+        stdPerSpecList.append(thisStd)
+
+print( 'Standard deviation across species means is ', str(np.std(mnPerSpecList)) )
+print( 'Mean value of within-species standard deviations is ', str(np.mean(stdPerSpecList)) )
+    
