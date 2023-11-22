@@ -85,7 +85,7 @@ def get_categories_and_colors():
     
     plant = ['basal_area','canopy_height', "agb",'ndvi', "nlcd","species",'isohydricity', 'root_depth', 'p50', 'gpmax', 'c', 'g1']
     soil = ['clay', 'sand','silt','thetas', 'ks', 'vanGen_n','Sr','Sbedrock','bulk_density','theta_third_bar','AWS']
-    climate = [ 'dry_season_length', 'vpd_mean', 'vpd_std',"ppt_mean","ppt_cv","t_mean","t_std","ppt_lte_100","AI"]
+    climate = ['vpd_mean', 'vpd_std',"ppt_mean","ppt_cv","t_mean","t_std","ppt_lte_100","AI"]
     topo = ['elevation', 'aspect', 'slope', 'twi',"dist_to_water"]
     
     return green, brown, blue, yellow, plant, soil, climate, topo 
@@ -98,7 +98,6 @@ def prettify_names(names):
                  "vpd_std":"VPD$_{std}$",
                  "thetas":"Soil porosity",
                  "elevation":"Elevation",
-                 "dry_season_length":"Dry season length",
                  "ppt_mean":"Precip$_{mean}$",
                  "ppt_cv":"Precip$_{CV}$",
                  "agb":"Biomass",
@@ -125,7 +124,6 @@ def prettify_names(names):
                  "aspect":"Aspect",
                  "slope":"Slope",
                  "twi":"TWI",
-                 "ppt_lte_100":"Dry months",
                  "dist_to_water":"Dist to water",
                  "t_mean":"Temp$_{mean}$",
                  "t_std":"Temp$_{st dev}$",
@@ -138,14 +136,21 @@ def prettify_names(names):
                  "restrictive_depth": "Restricton depth",
                  "species":"species",
                  "basal_area": "Basal area",
-                 "species_64.0":"Species 64", "species_65.0":"Species 65",
-                 "species_69.0":"Species 69", "species_106.0":"Species 106",
-                 "species_108.0":"Species 108", "species_122.0":"Species 122",
-                 "species_133.0":"Species 133", "species_202.0":"Species 202",
-                 "species_746.0":"Species 746", "species_756.0":"Species 756",
-                 "species_814.0":"Species 814",
                  "HAND":"HAND"
                  }
+    return [new_names[key] for key in names]
+
+def prettify_names_wunits(names):
+    new_names = {"ks":"K$_{s,max}$ [$\mu$m/s]",
+                 "ndvi":"$NDVI_{mean} [-]$",
+                 "vpd_mean":"VPD$_{mean}$ [hPa]",
+                 "ppt_cv":"Precip$_{CV}$ [-]",
+                 "bulk_density":"Bulk density [g/cm$^3$]",                
+                 "aspect":"Aspect [$^o$]",
+                 "slope":"Slope [%]",
+                 "twi":"TWI [-]",
+                 "AI":"Aridity index [-]",
+                 "Sr": "RZ storage [mm]"}
     return [new_names[key] for key in names]
     
     
@@ -429,7 +434,7 @@ def plot_pdp(regr, X_test):
     print(list(zip(X_test.columns, range(X_test.shape[1]))))
     features = np.arange(X_test.shape[1]) #[2,3,7, 12, 4, 13, 11, 18]
     feature_names = list(X_test.columns[features])
-    feature_names = prettify_names(feature_names)
+    feature_names = prettify_names_wunits(feature_names)
     ftCnt = 0
     fig, axs = plt.subplots(nrows=4, ncols=3, figsize = (12,9))
     plt.subplots_adjust(hspace=0.7)
