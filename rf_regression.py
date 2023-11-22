@@ -17,7 +17,7 @@ import sklearn.metrics
 from scipy.stats.stats import spearmanr
 from scipy.stats.stats import pearsonr
 import pickle
-
+import dill
 import dirs
 
 sns.set(font_scale = 1, style = "ticks")
@@ -506,6 +506,7 @@ ax = plot_importance_plants(imp)
 pltPDP = plot_pdp(regrn, X_test)
 pltImpCat.savefig("../figures/PWSDriversPaper/pdps.jpeg", dpi=300)
 
+
 '''
 now check how explanatory power compares if don't have species vs. if have 
 top 10 species one-hot-encoded
@@ -542,26 +543,28 @@ print('fraction explained by species' + str(coeffDeterm/score))
 
 '''Plot Figure 3 with R2 for both RF and species'''
 y_hat =regrn.predict(X_test)
-    
 fig, (ax1, ax2) = plt.subplots(1,2)
-ax1.scatter(y_hat, y_test, s = 1, alpha = 0.4, color='k')
+ax1.scatter(pwsPred, pwsVec, s = 1, alpha = 0.4, color='k')
 ax1.set_box_aspect(1)
 ax1.set_xlabel("Predicted PWS", fontsize = 14)
 ax1.set_ylabel("Actual PWS", fontsize = 14)
-ax1.set_xlim(0,6)
-ax1.set_ylim(0,6)
-ax1.set_title('Random forest', fontsize = 14)
-ax1.annotate(f"R$^2$={score:0.2f}", (0.61,0.06),xycoords = "axes fraction", 
+ax1.xaxis.set_ticks(np.arange(0, 6.2, 1))
+ax1.yaxis.set_ticks(np.arange(0, 6.2, 1))
+ax1.set_xlim(0,6), ax1.set_ylim(0,6)
+ax1.set_title('Species mean', fontsize = 14)
+ax1.annotate(f"R$^2$={coeffDeterm:0.2f}", (0.61,0.06),xycoords = "axes fraction", 
              fontsize=14, ha = "left")
 ax2.set_box_aspect(1)
-ax2.scatter(pwsPred, pwsVec, s = 1, alpha = 0.4, color='k')
+ax2.scatter(y_hat, y_test, s = 1, alpha = 0.4, color='k')
 ax2.set_xlabel("Predicted PWS", fontsize = 14)
-ax2.set_xlim(0,6)
-ax2.set_ylim(0,6)
-ax2.set_title('Species mean', fontsize = 14)
-ax2.annotate(f"R$^2$={coeffDeterm:0.2f}", (0.61,0.06),xycoords = "axes fraction", 
+ax2.set_xlim(0,6), ax2.set_ylim(0,6)
+ax2.xaxis.set_ticks(np.arange(0, 6.2, 1))
+ax2.yaxis.set_ticks(np.arange(0, 6.2, 1))
+ax2.set_title('Random forest', fontsize = 14)
+ax2.annotate(f"R$^2$={score:0.2f}", (0.61,0.06),xycoords = "axes fraction", 
              fontsize=14, ha = "left")
 fig.tight_layout()
 plt.savefig("../figures/PWSDriversPaper/scatterPlotsModels.jpeg", dpi=300)
 plt.show()
 
+dill.dump_session('./RFregression_dill.pkl')
