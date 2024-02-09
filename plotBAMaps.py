@@ -42,7 +42,7 @@ def plot_map(arrayToPlot, pwsExtent, stateBorders, title = None, vmin = None, vm
     
     
 #prep plotting
-pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_DecThruMay.tif'
+pwsPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWSCalc/PWS_through2021_DecThruMay.tif'
 pwsMap =rxr.open_rasterio(pwsPath, masked=True).squeeze()
 
 statesList = ['Washington','Oregon','California','Texas','Nevada','Idaho','Montana','Wyoming',

@@ -49,10 +49,10 @@ def plot_map(arrayToPlot, pwsExtent, stateBorders, title, vmin = None, vmax = No
     plt.show() 
     
 #load 
-decThruMayPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_DecThruMay.tif'
+decThruMayPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWSCalc/PWS_through2021_DecThruMay.tif'
 pwsDecThruMayMap =rxr.open_rasterio(decThruMayPath, masked=True).squeeze()
-#junThruNovPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWS_through2021_JunThruNov.tif'
-junThruNovPath = 'C:/repos/data/inputFeatures_wGNATSGO.h5'
+junThruNovPath = 'G:/My Drive/0000WorkComputer/dataStanford/PWSCalc/PWS_through2021_JunThruNov.tif'
+#junThruNovPath = 'C:/repos/data/inputFeatures_wGNATSGO.h5'
 pwsJunThruNovMap =rxr.open_rasterio(junThruNovPath, masked=True).squeeze()
 
 
@@ -137,7 +137,7 @@ def cleanup_data(df, droppedVarsList):
     
     return df, lat, lon
         
-featPath = os.path.join(dirs.dir_data, 'inputFeatures.h5')
+featPath = os.path.join('G:/My Drive/0000WorkComputer/dataStanford/PWSFeatures/inputFeatures.h5')
 dfDecThruMay =  load_data(featPath, decThruMayPath)
 dfJunThruNov =  load_data(featPath, junThruNovPath)
 
