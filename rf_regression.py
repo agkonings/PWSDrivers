@@ -211,7 +211,7 @@ def regress(df, optHyperparam=False):
     # test set performance
     score = regrn.score(X_test,y_test)
     scoreTrain = regrn.score(X_train, y_train)
-    print(f"[INFOTrain] score={scoreTrain:0.3f}, leaves={leaves}, decrease={decrease}")
+    #print(f"[INFOTrain] score={scoreTrain:0.3f}, leaves={leaves}, decrease={decrease}")
     print(f"[INFO] score={score:0.3f}, leaves={leaves}, decrease={decrease}")
     
     # assemble all importance with feature names and colors
@@ -454,6 +454,18 @@ def plot_pdp(regr, X_test):
     fig.delaxes(axs[3][1])
     fig.delaxes(axs[3][2])
     return plt
+
+def plot_scatter_feats(df_noSpec):
+    """
+    Plot joint KDE across features to get a feel for whether residual
+    co-variates lurking in certain sub-areas
+    """
+    g = sns.PairGrid(df_noSpec)
+    g.map_upper(sns.scatterplot)
+    g.map_lower(sns.kdeplot)
+    g.map_diag(sns.kdeplot, lw=3, legend=False)
+    
+    return g
     
     
 plt.rcParams.update({'font.size': 18})
@@ -471,7 +483,6 @@ droppedVarsList = ['elevation','dry_season_length','t_mean','ppt_mean','t_cv','p
                 'dist_to_water','basal_area','theta_third_bar', 'AWS','sand',
                 'agb','p50','gpmax','vpd_cv','root_depth']
 droppedVarsList = droppedVarsList + ['g1','c','isohydricity']
-#droppedVarsList.remove(['elevation','HAND','restrictive_depth','canopy_height','Sr','root_depth','bulk_density'])
 df_wSpec = cleanup_data(df_wSpec, droppedVarsList)
 
 #remove pixels with NLCD status that is not woody
@@ -479,17 +490,18 @@ df_wSpec = df_wSpec[df_wSpec['nlcd']<70] #unique values are 41, 42, 43, 52
 #remove mixed forest
 df_wSpec = df_wSpec[df_wSpec['nlcd'] != 43] #unique values are 41, 42, 43, 52
 
-
+'''
 #save for exact use in checkCrossCorrs.py
 pickleLoc = '../data/df_wSpec.pkl'
 with open(pickleLoc, 'wb') as file:
     pickle.dump(df_wSpec, file)
+'''
     
 #then drop species, lat, lon for actual RF
 df_noSpec = df_wSpec.drop(columns=['lat','lon','species', 'nlcd'], inplace=False)
 
 #seems to be some weird issue where RF model and importance is possibly affected by number of unique pixels in each dataset
-#add random noise to avoid that to be safe
+#add small random noise to avoid that to be safe
 uniqueCnt = df_noSpec.nunique()
 for var in df_noSpec.columns:
     if uniqueCnt[var] < 10000:
@@ -499,8 +511,18 @@ for var in df_noSpec.columns:
 '''
 now actually train model on everything except the species
 '''
+#Replace trained model with pickled version
+prevMod = dill.load( open('./RFregression_dill.pkl', 'rb') )
+regrn = getattr(prevMod, 'regrn')
+score = getattr(prevMod, 'score')
+imp = getattr(prevMod, 'imp')
+X_test = getattr(prevMod, 'X_test')
+y_test = getattr(prevMod, 'y_test')
+'''
+# old code:
 # Train rf
 X_test, y_test, regrn, score,  imp = regress(df_noSpec, optHyperparam=False)  
+'''
 # make plots
 ax = plot_corr_feats(df_noSpec)
 pltImp = plot_importance(imp)
@@ -510,6 +532,35 @@ pltImpCat.savefig("../figures/PWSDriversPaper/importanceCategories.jpeg", dpi=30
 ax = plot_importance_plants(imp)
 pltPDP = plot_pdp(regrn, X_test)
 pltImpCat.savefig("../figures/PWSDriversPaper/pdps.jpeg", dpi=300)
+#to help interpret the pdps
+#pltPairs = plot_scatter_feats(df_noSpec)
+
+Run a few alternative versions of the RF model with reduced inputs
+'''
+print('only climate')
+df_onlyClimate = df_noSpec.copy()
+df_onlyClimate = df_onlyClimate[['pws','vpd_mean','ppt_cv','AI']]
+X_test_oC, y_test_oC, regrn_oC, score_onlyClimate, imp_oC = regress(df_onlyClimate, optHyperparam=False)
+print('only NDVI')
+df_onlyPlant = df_noSpec.copy()
+df_onlyPlant = df_onlyPlant[['pws','ndvi']]
+X_test_oP, y_test_oP, regrn_oP, score_onlyPlant, imp_oP = regress(df_onlyPlant, optHyperparam=False)
+print('only Soil')
+df_onlySoil = df_noSpec.copy()
+df_onlySoil = df_onlySoil[['pws','ks','bulk_density','Sr']]
+X_test_oS, y_test_oS, regrn_oS, score_onlySoil, imp_oS = regress(df_onlySoil, optHyperparam=False)
+print('only topo')
+df_onlyTopo = df_noSpec.copy()
+df_onlyTopo = df_onlyTopo[['pws','aspect','slope','twi']]
+X_test_oT, y_test_oT, regrn_oT, score_onlyTopo, imp_oT = regress(df_onlyTopo, optHyperparam=False)
+print('no VPD')
+df_noVPD = df_noSpec.copy()
+df_noVPD.drop('vpd_mean', axis = 1, inplace = True)
+X_test_nV, y_test_nV, regrn_nV, score_noVPD, imp_nV = regress(df_noVPD, optHyperparam=False)
+print('no NDVI')
+df_noNDVI = df_noSpec.copy()
+df_noNDVI.drop('ndvi', axis = 1, inplace = True)
+X_test_nN, y_test_nN, regrn_nN, score_noNDVI, imp_nN = regress(df_noNDVI, optHyperparam=False)
 
 
 '''
@@ -543,9 +594,6 @@ coeffDeterm = 1 - SSres/SStot
 print('amount explained with ONLY species info ' + str(coeffDeterm))
 print('fraction explained by species' + str(coeffDeterm/score))
 
-
-
-
 '''Plot Figure 3 with R2 for both RF and species'''
 y_hat =regrn.predict(X_test)
 fig, (ax1, ax2) = plt.subplots(1,2)
@@ -576,4 +624,6 @@ fig.tight_layout()
 plt.savefig("../figures/PWSDriversPaper/scatterPlotsModels.jpeg", dpi=300)
 plt.show()
 
+'''
 dill.dump_session('./RFregression_dill.pkl')
+'''
