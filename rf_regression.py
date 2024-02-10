@@ -226,6 +226,8 @@ def regress(df, optHyperparam=False):
   
     green, brown, blue, yellow, plant, soil, climate, topo, \
                                             = get_categories_and_colors()
+                                            
+
     
     imp = pd.DataFrame(index = ticks, columns = ["importance"], data = heights)
     imp['importance std'] = uncBars
@@ -368,13 +370,11 @@ def plot_importance(imp):
     plt.tight_layout()
     return plt
 
-def plot_importance_by_category(imp, dropVars = None):
+def plot_importance_by_category(imp):
     """
     Feature importance combined by categories
     """
-    
-    if dropVars  != None:
-        imp = imp.drop(dropVars)
+
     
     green, brown, blue, yellow, plant, soil, climate, topo \
                                             = get_categories_and_colors()
@@ -387,18 +387,14 @@ def plot_importance_by_category(imp, dropVars = None):
     combined.plot.barh(y = "importance",x="category",color = combined.color, edgecolor = "grey", ax = ax,legend =False )
     # ax.set_yticks(range(len(ticks)))
     # ax.set_yticklabels(ticks)
-    
-    
-    ax.set_xlabel("Variable importance")
-    ax.set_ylabel("")
-    # ax.set_title("Hydraulic traits' predictive\npower for PWS", weight = "bold")
+    ax1.set_xlabel("Variable importance")
+    ax1.set_ylabel("")
     # Hide the right and top spines
-    ax.spines['right'].set_visible(False)
-    ax.spines['top'].set_visible(False)
-    
+    ax1.spines['right'].set_visible(False)
+    ax1.spines['top'].set_visible(False)
+     
     plt.tight_layout()
-    
-    print(combined)
+        
     return plt
     
 def plot_importance_plants(imp):
@@ -455,6 +451,27 @@ def plot_pdp(regr, X_test):
     fig.delaxes(axs[3][2])
     return plt
 
+def plot_R2_by_category(singleCat):
+    """
+    Feature importance combined by categories
+    """
+    
+    singleCat = singleCat.sort_values("score", ascending=False)
+    
+    fig, ax = plt.subplots(figsize = (2, 3.5)) 
+    
+    singleCat.plot.bar(y = "score",x="labels", color = singleCat.colors, edgecolor = "grey", ax = ax,legend =False )
+    ax.set_xlabel("Variable importance")
+    ax.set_ylabel("")  
+    ax.set_xlabel("")  
+    # Hide the right and top spines
+    ax1.spines['right'].set_visible(False)
+    ax1.spines['top'].set_visible(False)
+    
+    plt.tight_layout()
+     
+    return plt
+
 def plot_scatter_feats(df_noSpec):
     """
     Plot joint KDE across features to get a feel for whether residual
@@ -466,6 +483,47 @@ def plot_scatter_feats(df_noSpec):
     g.map_diag(sns.kdeplot, lw=3, legend=False)
     
     return g
+
+def regress_per_category(df, optHyperparam=False):
+    """
+    Build a dataframe with the scores for a model built on each category only
+    """
+    
+    #Run a few alternative versions of the RF model with reduced inputs
+    print('only climate')
+    df_onlyClimate = df.copy()
+    df_onlyClimate = df_onlyClimate[['pws','vpd_mean','ppt_cv','AI']]
+    X_test_oC, y_test_oC, regrn_oC, score_onlyClimate, imp_oC = regress(df_onlyClimate, optHyperparam=False)
+    print('only NDVI')
+    df_onlyPlant = df.copy()
+    df_onlyPlant = df_onlyPlant[['pws','ndvi']]
+    X_test_oP, y_test_oP, regrn_oP, score_onlyPlant, imp_oP = regress(df_onlyPlant, optHyperparam=False)
+    print('only Soil')
+    df_onlySoil = df.copy()
+    df_onlySoil = df_onlySoil[['pws','ks','bulk_density','Sr']]
+    X_test_oS, y_test_oS, regrn_oS, score_onlySoil, imp_oS = regress(df_onlySoil, optHyperparam=False)
+    print('only topo')
+    df_onlyTopo = df.copy()
+    df_onlyTopo = df_onlyTopo[['pws','aspect','slope','twi']]
+    X_test_oT, y_test_oT, regrn_oT, score_onlyTopo, imp_oT = regress(df_onlyTopo, optHyperparam=False)
+    print('no VPD')
+    df_noVPD = df_noSpec.copy()
+    df_noVPD.drop('vpd_mean', axis = 1, inplace = True)
+    X_test_nV, y_test_nV, regrn_nV, score_noVPD, imp_nV = regress(df_noVPD, optHyperparam=False)
+    print('no NDVI')
+    df_noNDVI = df.copy()
+    df_noNDVI.drop('ndvi', axis = 1, inplace = True)
+    X_test_nN, y_test_nN, regrn_nN, score_noNDVI, imp_nN = regress(df_noNDVI, optHyperparam=False)
+    
+    green, brown, blue, yellow, plant, soil, climate, topo \
+                                            = get_categories_and_colors()
+    cats = ['Climate','Veg density','Topography','Soil']
+    scores = [score_onlyClimate, score_onlyPlant, score_onlyTopo, score_onlySoil]
+    colors = [blue, green, brown, yellow]
+    data = {'score': scores, 'colors': colors, 'labels': ['Only climate only','Only NDVI','Only topography','Only soil']}
+    singleCat = pd.DataFrame(data)
+
+    return singleCat
     
     
 plt.rcParams.update({'font.size': 18})
@@ -527,40 +585,17 @@ X_test, y_test, regrn, score,  imp = regress(df_noSpec, optHyperparam=False)
 ax = plot_corr_feats(df_noSpec)
 pltImp = plot_importance(imp)
 pltImp.savefig("../figures/PWSDriversPaper/importance.jpeg", dpi=300)
-pltImpCat = plot_importance_by_category(imp)
-pltImpCat.savefig("../figures/PWSDriversPaper/importanceCategories.jpeg", dpi=300)
 ax = plot_importance_plants(imp)
 pltPDP = plot_pdp(regrn, X_test)
 pltImpCat.savefig("../figures/PWSDriversPaper/pdps.jpeg", dpi=300)
+pltImpCat = plot_importance_by_category(imp)
+pltImpCat.savefig("../figures/PWSDriversPaper/importanceCategories.jpeg", dpi=300)
 #to help interpret the pdps
 #pltPairs = plot_scatter_feats(df_noSpec)
 
-Run a few alternative versions of the RF model with reduced inputs
-'''
-print('only climate')
-df_onlyClimate = df_noSpec.copy()
-df_onlyClimate = df_onlyClimate[['pws','vpd_mean','ppt_cv','AI']]
-X_test_oC, y_test_oC, regrn_oC, score_onlyClimate, imp_oC = regress(df_onlyClimate, optHyperparam=False)
-print('only NDVI')
-df_onlyPlant = df_noSpec.copy()
-df_onlyPlant = df_onlyPlant[['pws','ndvi']]
-X_test_oP, y_test_oP, regrn_oP, score_onlyPlant, imp_oP = regress(df_onlyPlant, optHyperparam=False)
-print('only Soil')
-df_onlySoil = df_noSpec.copy()
-df_onlySoil = df_onlySoil[['pws','ks','bulk_density','Sr']]
-X_test_oS, y_test_oS, regrn_oS, score_onlySoil, imp_oS = regress(df_onlySoil, optHyperparam=False)
-print('only topo')
-df_onlyTopo = df_noSpec.copy()
-df_onlyTopo = df_onlyTopo[['pws','aspect','slope','twi']]
-X_test_oT, y_test_oT, regrn_oT, score_onlyTopo, imp_oT = regress(df_onlyTopo, optHyperparam=False)
-print('no VPD')
-df_noVPD = df_noSpec.copy()
-df_noVPD.drop('vpd_mean', axis = 1, inplace = True)
-X_test_nV, y_test_nV, regrn_nV, score_noVPD, imp_nV = regress(df_noVPD, optHyperparam=False)
-print('no NDVI')
-df_noNDVI = df_noSpec.copy()
-df_noNDVI.drop('ndvi', axis = 1, inplace = True)
-X_test_nN, y_test_nN, regrn_nN, score_noNDVI, imp_nN = regress(df_noNDVI, optHyperparam=False)
+singleCat = regress_per_category(df_noSpec)
+pltR2Cat = plot_R2_by_category(singleCat)
+pltR2Cat.savefig("../figures/PWSDriversPaper/R2OnlyCategories.jpeg", dpi=300)
 
 
 '''
