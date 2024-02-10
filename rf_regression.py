@@ -451,6 +451,42 @@ def plot_pdp(regr, X_test):
     fig.delaxes(axs[3][2])
     return plt
 
+def plot_top_pdp(regr, X_test):
+    """
+    Partial dependance plot of top features 
+    requires scikit-learn>=0.24.2
+    Manually limit to top features for simplicity of coding
+    Parameters
+    ----------
+    regr : trained rf regression
+    X_test : test set data for creating plot
+    
+    """
+    # Which features need PDPs? print below line and choose the numbers
+    # corresponding to the feature
+    features = ['ndvi','vpd_mean', 'slope', 'ppt_cv']
+    feature_names = prettify_names_wunits(features)
+    ftCnt = 0
+    fig, axs = plt.subplots(nrows=2, ncols=2, figsize = (6,6))
+    plt.subplots_adjust(hspace=0.5)
+    plt.subplots_adjust(wspace=0.5)
+    for feature, feature_name, ax in zip(features, feature_names, axs.ravel()):
+        pd_results = sklearn.inspection.partial_dependence(regr, X_test, feature)       
+        #fig, ax = plt.subplots(figsize = (4,4))        
+        #plt.subplot(5,2,ftCnt)
+        ax.plot(pd_results[1][0], pd_results[0][0], color="black")
+        ax.set_xlabel(feature_name, fontsize = 18)
+        #if np.mod(ftCnt, 3) == 0:
+        #    ax.set_ylabel("PWS", fontsize = 18)
+        #axs[rowCnt, colCnt]
+        ax.tick_params(axis='both', labelsize = 16)
+        ax.set_ylim(1.3,3.0)
+        ftCnt += 1
+        if feature == 'slope':
+            ax.set_xticks([0,2,4,6])
+    
+    return plt
+
 def plot_R2_by_category(singleCat):
     """
     Feature importance combined by categories
@@ -587,7 +623,8 @@ pltImp = plot_importance(imp)
 pltImp.savefig("../figures/PWSDriversPaper/importance.jpeg", dpi=300)
 ax = plot_importance_plants(imp)
 pltPDP = plot_pdp(regrn, X_test)
-pltImpCat.savefig("../figures/PWSDriversPaper/pdps.jpeg", dpi=300)
+pltPDP2 = plot_top_pdp(regrn, X_test)
+pltPDP2.savefig("../figures/PWSDriversPaper/pdps.jpeg", dpi=300)
 pltImpCat = plot_importance_by_category(imp)
 pltImpCat.savefig("../figures/PWSDriversPaper/importanceCategories.jpeg", dpi=300)
 #to help interpret the pdps
