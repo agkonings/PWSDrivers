@@ -542,14 +542,6 @@ def regress_per_category(df, optHyperparam=False):
     df_onlyTopo = df.copy()
     df_onlyTopo = df_onlyTopo[['pws','aspect','slope','twi']]
     X_test_oT, y_test_oT, regrn_oT, score_onlyTopo, imp_oT = regress(df_onlyTopo, optHyperparam=False)
-    print('no VPD')
-    df_noVPD = df_noSpec.copy()
-    df_noVPD.drop('vpd_mean', axis = 1, inplace = True)
-    X_test_nV, y_test_nV, regrn_nV, score_noVPD, imp_nV = regress(df_noVPD, optHyperparam=False)
-    print('no NDVI')
-    df_noNDVI = df.copy()
-    df_noNDVI.drop('ndvi', axis = 1, inplace = True)
-    X_test_nN, y_test_nN, regrn_nN, score_noNDVI, imp_nN = regress(df_noNDVI, optHyperparam=False)
     
     green, brown, blue, yellow, plant, soil, climate, topo \
                                             = get_categories_and_colors()
@@ -574,7 +566,7 @@ df_wSpec =  load_data(dfPath, pwsPath)
 #further added nlcd to drop list since doesn't really make sense if focusing on fia plots
 droppedVarsList = ['elevation','dry_season_length','t_mean','ppt_mean','t_cv','ppt_lte_100',
                 'canopy_height', 'HAND','restrictive_depth','clay',
-                'dist_to_water','basal_area','theta_third_bar', 'AWS','sand',
+                'dist_to_water','basal_area','theta_third_bar','AWS','sand',
                 'agb','p50','gpmax','vpd_cv','root_depth']
 droppedVarsList = droppedVarsList + ['g1','c','isohydricity']
 df_wSpec = cleanup_data(df_wSpec, droppedVarsList)
@@ -584,12 +576,11 @@ df_wSpec = df_wSpec[df_wSpec['nlcd']<70] #unique values are 41, 42, 43, 52
 #remove mixed forest
 df_wSpec = df_wSpec[df_wSpec['nlcd'] != 43] #unique values are 41, 42, 43, 52
 
-'''
+
 #save for exact use in checkCrossCorrs.py
 pickleLoc = '../data/df_wSpec.pkl'
 with open(pickleLoc, 'wb') as file:
     pickle.dump(df_wSpec, file)
-'''
     
 #then drop species, lat, lon for actual RF
 df_noSpec = df_wSpec.drop(columns=['lat','lon','species', 'nlcd'], inplace=False)
@@ -614,7 +605,7 @@ X_test = getattr(prevMod, 'X_test')
 y_test = getattr(prevMod, 'y_test')
 '''
 # old code:
-# Train rf
+# Train rf#
 X_test, y_test, regrn, score,  imp = regress(df_noSpec, optHyperparam=False)  
 '''
 # make plots
@@ -634,6 +625,23 @@ singleCat = regress_per_category(df_noSpec)
 pltR2Cat = plot_R2_by_category(singleCat)
 pltR2Cat.savefig("../figures/PWSDriversPaper/R2OnlyCategories.jpeg", dpi=300)
 
+'''
+For reviewer 1, calculate model performance without NDVI or VPD
+'''
+print('no VPD')
+df_noVPD = df_noSpec.copy()
+df_noVPD.drop('vpd_mean', axis = 1, inplace = True)
+X_test_nV, y_test_nV, regrn_nV, score_noVPD, imp_nV = regress(df_noVPD, optHyperparam=False)
+print('no NDVI')
+df_noNDVI = df_noSpec.copy()
+df_noNDVI.drop('ndvi', axis = 1, inplace = True)
+X_test_nN, y_test_nN, regrn_nN, score_noNDVI, imp_nN = regress(df_noNDVI, optHyperparam=False)
+print('no VPD and no NDVI')
+df_noVPDnoNDVI = df_noSpec.copy()
+df_noVPDnoNDVI.drop('ndvi', axis = 1, inplace = True)
+df_noVPDnoNDVI.drop('vpd_mean', axis = 1, inplace = True)
+X_test_nVnN, y_test_nVnN, regrn_nVnN, score_noVPDnoNDVI, imp_nVnN = regress(df_noVPDnoNDVI, optHyperparam=False)
+error
 
 '''
 now check how explanatory power compares if don't have species vs. if have 
