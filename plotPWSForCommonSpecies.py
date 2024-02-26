@@ -128,7 +128,7 @@ vc = rfLocs['species'].value_counts()
 Ok, ready to plot!
 '''
 
-plotSpecList = {202, 122, 65, 756, 69}
+plotSpecList = [202, 122, 65, 756, 69]
 legLabels = ["Douglas-fir", "Ponderosa pine", "Utah juniper", "Honey mesquite", "Oneseed juniper", "All"]
 
 #filter dataframe to be used for plotting purposes so that it only 
@@ -163,4 +163,13 @@ for spec in np.unique(rfLocs['species']):
 
 print( 'Standard deviation across species means is ', str(np.std(mnPerSpecList)) )
 print( 'Mean value of within-species standard deviations is ', str(np.mean(stdPerSpecList)) )
-    
+
+#plot bar chart of top species for paper
+#don't overcomplicat ethings, just do manually
+fig, ax = plt.subplots(figsize=(3,3))
+ax = sns.barplot(y=[0,1,2,3,4], x=vc[plotSpecList], palette=sns.color_palette(n_colors=5), orient='h')
+ax.set_yticks([0,1,2,3,4])
+ax.set_yticklabels(legLabels[:-1]) 
+ax.set(xlabel='number of sites')
+plt.savefig("../figures/PWSDriversPaper/nSites_keySpecies.svg", dpi=300, bbox_inches='tight')
+plt.show()
