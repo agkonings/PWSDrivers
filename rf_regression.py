@@ -7,6 +7,7 @@ from osgeo import gdal
 import sklearn.ensemble
 import sklearn.model_selection
 import matplotlib.pyplot as plt
+from matplotlib import gridspec
 import seaborn as sns
 import mpl_scatter_density
 import sklearn.preprocessing
@@ -345,12 +346,16 @@ def plot_importance(imp):
 
     """
     
-    fig, ax = plt.subplots(figsize = (5.5,7))
+    fig = plt.subplots(2, 1, figsize = (4,10))
+    gs = gridspec.GridSpec(2, 1, height_ratios=[3, 1], hspace=0.25)
+    ax0 = plt.subplot(gs[0])
     green, brown, blue, yellow, plant, soil, climate, topo \
                                             = get_categories_and_colors()
+    
+    
+    imp.plot.barh(y = "importance",x="symbol",color = imp.color, edgecolor = "grey", ax = ax0, fontsize = 18)
 
-    imp.plot.barh(y = "importance",x="symbol",color = imp.color, edgecolor = "grey", ax = ax, fontsize = 18)
-
+    '''
     legend_elements = [matplotlib.patches.Patch(facecolor=blue, edgecolor='grey',
                              label='Climate'),
                        matplotlib.patches.Patch(facecolor=green, edgecolor='grey',
@@ -359,15 +364,38 @@ def plot_importance(imp):
                              label='Topography'), 
                        matplotlib.patches.Patch(facecolor=brown, edgecolor='grey',
                              label='Soil')]
-    ax.legend(handles=legend_elements, fontsize = 18, loc='lower right')
-    ax.set_xlabel("Variable importance", fontsize = 18)
-    ax.set_ylabel("")
-    ax.set_xlim(0,0.50)
+    '''
+    #ax0.legend(handles=legend_elements, fontsize = 18, loc='lower right')
+    ax0.set_xlabel("Variable importance", fontsize = 18)
+    ax0.set_ylabel("")
+    ax0.set_xlim(0,0.50)
 
-    ax.spines['right'].set_visible(False)
-    ax.spines['top'].set_visible(False)
+    ax0.spines['right'].set_visible(False)
+    ax0.spines['top'].set_visible(False)
+    ax0.get_legend().remove()
+    ax0.text(-0.5, 1.05, 'a)', transform=ax0.transAxes, fontsize = 18, fontweight='bold', va='top', ha='left')
     
-    plt.tight_layout()
+    #then make second panel with importance by categories    
+    combined = pd.DataFrame({"category":["Veg density","Climate","Soil","Topography"], \
+                             "color":[green, blue, brown, yellow]})
+    combined = combined.merge(imp.groupby("color").sum(), on = "color")
+    
+    combined = combined.sort_values("importance")
+    
+    ax1 = plt.subplot(gs[1])
+    combined.plot.barh(y = "importance",x="category",color = combined.color, edgecolor = "grey", ax = ax1,fontsize = 18, legend =False )
+    ax1.set_xlabel("Variable importance", fontsize = 18)
+    ax1.set_ylabel("")
+    ax1.set_xlim(0,0.50)
+    # Hide the right and top spines
+    ax1.spines['right'].set_visible(False)
+    ax1.spines['top'].set_visible(False)
+    ax1.text(-0.5, 1.05, 'b)', transform=ax1.transAxes, fontsize = 18, fontweight='bold', va='top', ha='left')
+     
+    plt.savefig("../figures/PWSDriversPaper/importanceCombined.jpeg", dpi=300, bbox_inches='tight')
+    plt.show()
+    
+    
     return plt
 
 def plot_importance_by_category(imp):
@@ -394,6 +422,7 @@ def plot_importance_by_category(imp):
     ax1.spines['top'].set_visible(False)
      
     plt.tight_layout()
+    plot.show()
         
     return plt
     
@@ -432,7 +461,7 @@ def plot_pdp(regr, X_test):
     feature_names = list(X_test.columns[features])
     feature_names = prettify_names_wunits(feature_names)
     ftCnt = 0
-    fig, axs = plt.subplots(nrows=4, ncols=3, figsize = (12,9))
+    fig, axs = plt.subplots(nrows=4, ncols=3, figsize = (8,6))
     plt.subplots_adjust(hspace=0.7)
     plt.subplots_adjust(wspace=0.5)
     for feature, feature_name, ax in zip(features, feature_names, axs.ravel()):
@@ -548,7 +577,7 @@ def regress_per_category(df, optHyperparam=False):
     cats = ['Climate','Veg density','Topography','Soil']
     scores = [score_onlyClimate, score_onlyPlant, score_onlyTopo, score_onlySoil]
     colors = [blue, green, brown, yellow]
-    data = {'score': scores, 'colors': colors, 'labels': ['Only climate only','Only NDVI','Only topography','Only soil']}
+    data = {'score': scores, 'colors': colors, 'labels': ['Only climate','Only NDVI','Only topography','Only soil']}
     singleCat = pd.DataFrame(data)
 
     return singleCat
@@ -581,6 +610,7 @@ df_wSpec = df_wSpec[df_wSpec['nlcd'] != 43] #unique values are 41, 42, 43, 52
 pickleLoc = '../data/df_wSpec.pkl'
 with open(pickleLoc, 'wb') as file:
     pickle.dump(df_wSpec, file)
+
     
 #then drop species, lat, lon for actual RF
 df_noSpec = df_wSpec.drop(columns=['lat','lon','species', 'nlcd'], inplace=False)
@@ -611,16 +641,11 @@ X_test, y_test, regrn, score,  imp = regress(df_noSpec, optHyperparam=False)
 # make plots
 ax = plot_corr_feats(df_noSpec)
 pltImp = plot_importance(imp)
-pltImp.savefig("../figures/PWSDriversPaper/importance.jpeg", dpi=300)
-ax = plot_importance_plants(imp)
 pltPDP = plot_pdp(regrn, X_test)
 pltPDP2 = plot_top_pdp(regrn, X_test)
 pltPDP2.savefig("../figures/PWSDriversPaper/pdps.jpeg", dpi=300)
-pltImpCat = plot_importance_by_category(imp)
-pltImpCat.savefig("../figures/PWSDriversPaper/importanceCategories.jpeg", dpi=300)
-#to help interpret the pdps
-#pltPairs = plot_scatter_feats(df_noSpec)
-
+#pltImpCat = plot_importance_by_category(imp)
+#pltImpCat.savefig("../figures/PWSDriversPaper/importanceCategories.jpeg", dpi=300)
 singleCat = regress_per_category(df_noSpec)
 pltR2Cat = plot_R2_by_category(singleCat)
 pltR2Cat.savefig("../figures/PWSDriversPaper/R2OnlyCategories.jpeg", dpi=300)
@@ -641,7 +666,7 @@ df_noVPDnoNDVI = df_noSpec.copy()
 df_noVPDnoNDVI.drop('ndvi', axis = 1, inplace = True)
 df_noVPDnoNDVI.drop('vpd_mean', axis = 1, inplace = True)
 X_test_nVnN, y_test_nVnN, regrn_nVnN, score_noVPDnoNDVI, imp_nVnN = regress(df_noVPDnoNDVI, optHyperparam=False)
-error
+
 
 '''
 now check how explanatory power compares if don't have species vs. if have 
