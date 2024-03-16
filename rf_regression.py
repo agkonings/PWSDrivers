@@ -527,7 +527,7 @@ def plot_R2_by_category(singleCat):
     
     singleCat.plot.bar(y = "score",x="labels", color = singleCat.colors, edgecolor = "grey", ax = ax,legend =False )
     ax.set_xlabel("Variable importance")
-    ax.set_ylabel("")  
+    ax.set_ylabel("R$^2$")  
     ax.set_xlabel("")  
     # Hide the right and top spines
     ax1.spines['right'].set_visible(False)
