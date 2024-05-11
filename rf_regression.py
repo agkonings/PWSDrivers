@@ -20,10 +20,10 @@ from scipy.stats.stats import pearsonr
 import pickle
 import dill
 import dirs
+from alepython import ale_plot
 
 sns.set(font_scale = 1, style = "ticks")
 plt.rcParams.update({'font.size': 18})
-
 
 def add_pws(df, pwsPath):
     '''
@@ -516,6 +516,42 @@ def plot_top_pdp(regr, X_test):
     
     return plt
 
+def plot_top_ale(regr, X_test):
+    """
+    Accumulated local effects plot of top features 
+    Manually limit to top features for simplicity of coding
+    Parameters
+    ----------
+    regr : trained rf regression
+    X_test : test set data for creating plot
+    
+    """
+    # Which features need PDPs? print below line and choose the numbers
+    # corresponding to the feature
+    features = ['ndvi','vpd_mean', 'slope', 'ppt_cv']
+    feature_names = prettify_names_wunits(features)
+    ftCnt = 0
+    figALEs, axs = plt.subplots(nrows=2, ncols=2, figsize = (6,6))
+    plt.subplots_adjust(hspace=0.5)
+    plt.subplots_adjust(wspace=0.5)
+    for feature, feature_name, ax in zip(features, feature_names, axs.ravel()):
+        axALE = ale_plot(regr, X_test, feature, monte_carlo=False, rugplot_lim=None)  
+        #pull out data and re-plot
+        lines = axALE.lines
+        for line in lines:
+            x_data = line.get_xdata()
+            y_data = line.get_ydata()
+        plt.figure(figALEs.number)    
+        ax.plot(x_data, y_data, color="black")
+        ax.set_xlabel(feature_name, fontsize = 18)
+        ax.tick_params(axis='both', labelsize = 16)
+        sns.rugplot(X_test[feature], ax=ax, alpha=0.2)    
+        #first_order_quant_plot??
+    
+    figALEs.show()
+    return plt
+
+
 def plot_R2_by_category(singleCat):
     """
     Feature importance combined by categories
@@ -643,6 +679,8 @@ ax = plot_corr_feats(df_noSpec)
 pltImp = plot_importance(imp)
 pltPDP = plot_pdp(regrn, X_test)
 pltPDP2 = plot_top_pdp(regrn, X_test)
+pltALE = plot_top_ale(regrn, X_test)
+error
 pltPDP2.savefig("../figures/PWSDriversPaper/pdps.jpeg", dpi=300)
 #pltImpCat = plot_importance_by_category(imp)
 #pltImpCat.savefig("../figures/PWSDriversPaper/importanceCategories.jpeg", dpi=300)
