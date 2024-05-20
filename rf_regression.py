@@ -21,6 +21,10 @@ import pickle
 import dill
 import dirs
 from alepython import ale_plot
+import geopandas as gpd
+import rioxarray as rxr
+import rasterio
+from rasterio.plot import plotting_extent, show
 
 sns.set(font_scale = 1, style = "ticks")
 plt.rcParams.update({'font.size': 18})
@@ -516,7 +520,7 @@ def plot_top_pdp(regr, X_test):
     
     return plt
 
-def plot_top_ale(regr, X_test):
+def plot_top_ale(regr, X_test, savePath = None):
     """
     Accumulated local effects plot of top features 
     Manually limit to top features for simplicity of coding
@@ -546,9 +550,11 @@ def plot_top_ale(regr, X_test):
         ax.set_xlabel(feature_name, fontsize = 18)
         ax.tick_params(axis='both', labelsize = 16)
         sns.rugplot(X_test[feature], ax=ax, alpha=0.2)    
-        #first_order_quant_plot??
+
     
     figALEs.show()
+    if savePath != None:
+        figALEs.savefig(savePath, dpi=300)
     return plt
 
 
@@ -617,6 +623,31 @@ def regress_per_category(df, optHyperparam=False):
     singleCat = pd.DataFrame(data)
 
     return singleCat
+
+def plot_map(arrayToPlot, pwsExtent, stateBorders, title = None, vmin = None, vmax = None, clrmap = 'YlGnBu', savePath = None):
+    '''make map with state borders'''
+    
+    #preliminary calculatios
+    statesList = ['Washington','Oregon','California','Texas','Nevada','Idaho','Montana','Wyoming',
+              'Arizona','New Mexico','Colorado','Utah']    
+    
+    #actual plotting
+    fig, ax = plt.subplots()
+    if vmin != None and vmax != None:
+        ax = rasterio.plot.show(arrayToPlot, interpolation='nearest', vmin=vmin, vmax=vmax, extent=pwsExtent, ax=ax, cmap=clrmap)
+    else:
+        ax = rasterio.plot.show(arrayToPlot, interpolation='nearest', extent=pwsExtent, ax=ax, cmap=clrmap)
+    stateBorders[stateBorders['NAME'].isin(statesList)].boundary.plot(ax=ax, edgecolor='black', linewidth=0.5) 
+    im = ax.get_images()[0]
+    #cbar = plt.colorbar(im, ax=ax) #ticks=range(0,6)
+    #cbar.ax.set_xticklabels([ 'Deciduous','Evergreen','Mixed','Shrub','Grass', 'Pasture'])
+    plt.title(title)
+    ax.axis('off')
+    plt.xticks([])
+    plt.yticks([])
+    if savePath != None:
+        plt.savefig(savePath)
+    plt.show() 
     
     
 plt.rcParams.update({'font.size': 18})
@@ -679,14 +710,12 @@ ax = plot_corr_feats(df_noSpec)
 pltImp = plot_importance(imp)
 pltPDP = plot_pdp(regrn, X_test)
 pltPDP2 = plot_top_pdp(regrn, X_test)
-pltALE = plot_top_ale(regrn, X_test)
-error
-pltPDP2.savefig("../figures/PWSDriversPaper/pdps.jpeg", dpi=300)
-#pltImpCat = plot_importance_by_category(imp)
+pltALE = plot_top_ale(regrn, X_test, savePath = "../figures/PWSDriversPaper/ales.jpeg")
+pltImpCat = plot_importance_by_category(imp)
 #pltImpCat.savefig("../figures/PWSDriversPaper/importanceCategories.jpeg", dpi=300)
 singleCat = regress_per_category(df_noSpec)
 pltR2Cat = plot_R2_by_category(singleCat)
-pltR2Cat.savefig("../figures/PWSDriversPaper/R2OnlyCategories.jpeg", dpi=300)
+#pltR2Cat.savefig("../figures/PWSDriversPaper/R2OnlyCategories.jpeg", dpi=300)
 
 '''
 For reviewer 1, calculate model performance without NDVI or VPD
@@ -764,8 +793,103 @@ ax2.annotate(f"R$^2$={score:0.2f}", (0.61,0.06),xycoords = "axes fraction",
 ax2.annotate('b)', (-0.2,1.10),xycoords = "axes fraction", 
              fontsize=14, weight='bold')
 fig.tight_layout()
-plt.savefig("../figures/PWSDriversPaper/scatterPlotsModels.jpeg", dpi=300)
+#plt.savefig("../figures/PWSDriversPaper/scatterPlotsModels.jpeg", dpi=300)
 plt.show()
+
+
+
+''' 
+Make some maps of PWS as observed, predicted, and error
+'''
+def plot_map(arrayToPlot, pwsExtent, stateBorders, title = None, vmin = None, vmax = None, clrmap = 'YlGnBu', savePath = None):
+    '''make map with state borders'''
+    
+    #preliminary calculatios
+    statesList = ['Washington','Oregon','California','Texas','Nevada','Idaho','Montana','Wyoming',
+              'Arizona','New Mexico','Colorado','Utah']    
+    
+    #actual plotting
+    fig, ax = plt.subplots()
+    if vmin != None and vmax != None:
+        ax = rasterio.plot.show(arrayToPlot, interpolation='nearest', vmin=vmin, vmax=vmax, extent=pwsExtent, ax=ax, cmap=clrmap)
+    else:
+        ax = rasterio.plot.show(arrayToPlot, interpolation='nearest', extent=pwsExtent, ax=ax, cmap=clrmap)
+    stateBorders[stateBorders['NAME'].isin(statesList)].boundary.plot(ax=ax, edgecolor='black', linewidth=0.5) 
+    im = ax.get_images()[0]
+    plt.title(title)
+    ax.axis('off')
+    plt.xticks([])
+    plt.yticks([])
+    if savePath != None:
+        plt.savefig(savePath)
+    plt.show() 
+    
+#save each dataframe of locations to PWS grid
+def makeGridWithPlots(vals, lat, lon, gt, pws):
+    '''
+    Parameters
+    ----------
+    vals
+    df : dataframe, assumed to have 'LON' and 'LAT' columns
+    gt : geotransform associated with grid
+    pws : basis of grid, used to obtain intended shape and non-land NaN locs
+
+    Returns
+    -------
+    outGrid
+    
+    Function assumes vals, lat, and lon are all of same length and will not check!
+    '''
+    indX = np.floor( (lon-gt[0])/gt[1] ).to_numpy().astype(int)
+    indY = np.floor( (lat-gt[3])/gt[5] ).to_numpy().astype(int)
+    n1, n2 = pws.shape
+    #this has pixels in American Samoa and the like. Remove those
+    mask = np.ones(indX.shape, dtype=bool)
+    mask[indX < 0] = False
+    mask[indX >= n2] = False
+    mask[indY < 0] = False
+    mask[indY > n1] = False
+    indX = indX[mask]
+    indY = indY[mask]
+    #create array, and assign 
+    outGrid = np.zeros(pws.shape) * np.nan
+    outGrid[indY, indX] = vals
+    outGrid[np.isnan(pws)] = np.nan
+    return outGrid
+
+#get full series of all predictions on all points (not separate train and test splits)
+rfPredAll =regrn.predict(df_noSpec.drop("pws",axis = 1))
+
+#load various plotting-required features
+ds = gdal.Open(pwsPath)
+gt = ds.GetGeoTransform()
+pws = ds.GetRasterBand(1).ReadAsArray()
+pws_y,pws_x = pws.shape
+wkt_projection = ds.GetProjection()
+pws_rxr =rxr.open_rasterio(pwsPath, masked=True).squeeze()
+pwsExtent = plotting_extent(pws_rxr, pws_rxr.rio.transform())
+statesPath = "C:/repos/data/cb_2018_us_state_5m/cb_2018_us_state_5m.shp"
+states = gpd.read_file(statesPath)  
+ds = None
+
+#make rasters
+PWSMap = makeGridWithPlots(pwsVec, df_wSpec['lat'], df_wSpec['lon'], gt, pws)
+spPredMap = makeGridWithPlots(pwsPred, df_wSpec['lat'], df_wSpec['lon'], gt, pws)
+rfPredMap = makeGridWithPlots(rfPredAll, df_wSpec['lat'], df_wSpec['lon'], gt, pws)
+
+
+plot_map(PWSMap, pwsExtent, states, clrmap='Dark2', title='PWS', vmin=0, vmax=6)
+plot_map(spPredMap, pwsExtent, states, clrmap='Dark2', title='species prediction', vmin=0, vmax=6)
+plot_map(rfPredMap, pwsExtent, states, clrmap='Dark2', title='RF prediction', vmin=0, vmax=6)
+plot_map(spPredMap-PWSMap, pwsExtent, states, clrmap='Dark2', title='species prediction - obs', vmin=-3, vmax=3)
+plot_map(rfPredMap-PWSMap, pwsExtent, states, clrmap='Dark2', title='RF prediction - obs', vmin=-3, vmax=3)
+
+
+#TODO DECIDE WHAT TO PLOT, ADD COLORBAR. fix proj
+
+
+#build from plotFIALocations.py. AGK ongoing!!!
+
 
 '''
 dill.dump_session('./RFregression_dill.pkl')
