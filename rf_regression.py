@@ -17,6 +17,7 @@ from sklearn.inspection import permutation_importance
 import sklearn.metrics
 from scipy.stats.stats import spearmanr
 from scipy.stats.stats import pearsonr
+from scipy.stats import gaussian_kde
 import pickle
 import dill
 import dirs
@@ -768,13 +769,22 @@ print('fraction explained by species' + str(coeffDeterm/score))
 
 '''Plot Figure 3 with R2 for both RF and species'''
 y_hat =regrn.predict(X_test)
+#get full series of all predictions on all points (not separate train and test splits)
+rfPredAll =regrn.predict(df_noSpec.drop("pws",axis = 1))
+
+xySp = np.vstack([pwsPred,pwsVec])
+kdeSp = gaussian_kde(xySp, bw_method=0.05)(xySp)
+xyRF = np.vstack([rfPredAll,pwsVec])
+kdeRF = gaussian_kde(xyRF, bw_method=0.05)(xyRF)
+
 fig, (ax1, ax2) = plt.subplots(1,2)
-ax1.scatter(pwsPred, pwsVec, s = 1, alpha = 0.4, color='k')
+ax1.scatter(pwsPred, pwsVec, c=kdeSp, s = 1, alpha = 0.4, cmap='inferno')
 ax1.set_box_aspect(1)
 ax1.set_xlabel("Predicted PWS", fontsize = 14)
 ax1.set_ylabel("Actual PWS", fontsize = 14)
 ax1.xaxis.set_ticks(np.arange(0, 6.2, 1))
 ax1.yaxis.set_ticks(np.arange(0, 6.2, 1))
+ax1.plot([0, 6], [0, 6], color='b', linestyle='--')
 ax1.set_xlim(0,6), ax1.set_ylim(0,6)
 ax1.set_title('Species mean', fontsize = 14)
 ax1.annotate(f"R$^2$={coeffDeterm:0.2f}", (0.61,0.06),xycoords = "axes fraction", 
@@ -782,25 +792,24 @@ ax1.annotate(f"R$^2$={coeffDeterm:0.2f}", (0.61,0.06),xycoords = "axes fraction"
 ax1.annotate('a)', (-0.2,1.1),xycoords = "axes fraction", 
              fontsize=14, weight='bold')
 ax2.set_box_aspect(1)
-ax2.scatter(y_hat, y_test, s = 1, alpha = 0.4, color='k')
+ax2.scatter(rfPredAll, pwsVec, c=kdeRF, s = 1, alpha = 0.4, cmap='inferno')
 ax2.set_xlabel("Predicted PWS", fontsize = 14)
 ax2.set_xlim(0,6), ax2.set_ylim(0,6)
 ax2.xaxis.set_ticks(np.arange(0, 6.2, 1))
 ax2.yaxis.set_ticks(np.arange(0, 6.2, 1))
+ax2.plot([0, 6], [0, 6], color='b', linestyle='--', )
 ax2.set_title('Random forest', fontsize = 14)
 ax2.annotate(f"R$^2$={score:0.2f}", (0.61,0.06),xycoords = "axes fraction", 
              fontsize=14, ha = "left")
 ax2.annotate('b)', (-0.2,1.10),xycoords = "axes fraction", 
              fontsize=14, weight='bold')
 fig.tight_layout()
-#plt.savefig("../figures/PWSDriversPaper/scatterPlotsModels.jpeg", dpi=300)
-plt.show()
+plt.savefig("../figures/PWSDriversPaper/densityPlotsModels.jpeg", dpi=300)
 
 ''' 
 Make some maps of PWS as observed, predicted, and error
 '''
-#get full series of all predictions on all points (not separate train and test splits)
-rfPredAll =regrn.predict(df_noSpec.drop("pws",axis = 1))
+
 
 #make dataframes
 dfPWS = df_wSpec[['lat','lon','pws']]
