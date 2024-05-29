@@ -22,6 +22,7 @@ import dill
 import dirs
 from alepython import ale_plot
 import geopandas as gpd
+from shapely.geometry import Point
 import rioxarray as rxr
 import rasterio
 from rasterio.plot import plotting_extent, show
@@ -672,12 +673,12 @@ df_wSpec = df_wSpec[df_wSpec['nlcd']<70] #unique values are 41, 42, 43, 52
 #remove mixed forest
 df_wSpec = df_wSpec[df_wSpec['nlcd'] != 43] #unique values are 41, 42, 43, 52
 
-
+'''
 #save for exact use in checkCrossCorrs.py
-pickleLoc = '../data/df_wSpec.pkl'
+pickleLoc = './data/df_wSpec.pkl'
 with open(pickleLoc, 'wb') as file:
     pickle.dump(df_wSpec, file)
-
+'''
     
 #then drop species, lat, lon for actual RF
 df_noSpec = df_wSpec.drop(columns=['lat','lon','species', 'nlcd'], inplace=False)
@@ -689,7 +690,6 @@ for var in df_noSpec.columns:
     if uniqueCnt[var] < 10000:
         reasonableNoise = 1e-5*df_noSpec[var].median()
         df_noSpec[var] = df_noSpec[var] + np.random.normal(0, reasonableNoise, len(df_noSpec))
-
 '''
 now actually train model on everything except the species
 '''
@@ -796,100 +796,76 @@ fig.tight_layout()
 #plt.savefig("../figures/PWSDriversPaper/scatterPlotsModels.jpeg", dpi=300)
 plt.show()
 
-
-
 ''' 
 Make some maps of PWS as observed, predicted, and error
 '''
-def plot_map(arrayToPlot, pwsExtent, stateBorders, title = None, vmin = None, vmax = None, clrmap = 'YlGnBu', savePath = None):
-    '''make map with state borders'''
-    
-    #preliminary calculatios
-    statesList = ['Washington','Oregon','California','Texas','Nevada','Idaho','Montana','Wyoming',
-              'Arizona','New Mexico','Colorado','Utah']    
-    
-    #actual plotting
-    fig, ax = plt.subplots()
-    if vmin != None and vmax != None:
-        ax = rasterio.plot.show(arrayToPlot, interpolation='nearest', vmin=vmin, vmax=vmax, extent=pwsExtent, ax=ax, cmap=clrmap)
-    else:
-        ax = rasterio.plot.show(arrayToPlot, interpolation='nearest', extent=pwsExtent, ax=ax, cmap=clrmap)
-    stateBorders[stateBorders['NAME'].isin(statesList)].boundary.plot(ax=ax, edgecolor='black', linewidth=0.5) 
-    im = ax.get_images()[0]
-    plt.title(title)
-    ax.axis('off')
-    plt.xticks([])
-    plt.yticks([])
-    if savePath != None:
-        plt.savefig(savePath)
-    plt.show() 
-    
-#save each dataframe of locations to PWS grid
-def makeGridWithPlots(vals, lat, lon, gt, pws):
-    '''
-    Parameters
-    ----------
-    vals
-    df : dataframe, assumed to have 'LON' and 'LAT' columns
-    gt : geotransform associated with grid
-    pws : basis of grid, used to obtain intended shape and non-land NaN locs
-
-    Returns
-    -------
-    outGrid
-    
-    Function assumes vals, lat, and lon are all of same length and will not check!
-    '''
-    indX = np.floor( (lon-gt[0])/gt[1] ).to_numpy().astype(int)
-    indY = np.floor( (lat-gt[3])/gt[5] ).to_numpy().astype(int)
-    n1, n2 = pws.shape
-    #this has pixels in American Samoa and the like. Remove those
-    mask = np.ones(indX.shape, dtype=bool)
-    mask[indX < 0] = False
-    mask[indX >= n2] = False
-    mask[indY < 0] = False
-    mask[indY > n1] = False
-    indX = indX[mask]
-    indY = indY[mask]
-    #create array, and assign 
-    outGrid = np.zeros(pws.shape) * np.nan
-    outGrid[indY, indX] = vals
-    outGrid[np.isnan(pws)] = np.nan
-    return outGrid
-
 #get full series of all predictions on all points (not separate train and test splits)
 rfPredAll =regrn.predict(df_noSpec.drop("pws",axis = 1))
 
-#load various plotting-required features
-ds = gdal.Open(pwsPath)
-gt = ds.GetGeoTransform()
-pws = ds.GetRasterBand(1).ReadAsArray()
-pws_y,pws_x = pws.shape
-wkt_projection = ds.GetProjection()
-pws_rxr =rxr.open_rasterio(pwsPath, masked=True).squeeze()
-pwsExtent = plotting_extent(pws_rxr, pws_rxr.rio.transform())
+#make dataframes
+dfPWS = df_wSpec[['lat','lon','pws']]
+dfSpPred = df_wSpec[['lat','lon']].copy()
+dfSpPred['pws'] = pwsPred
+dfRFPred = df_wSpec[['lat','lon']].copy()
+dfRFPred['pws'] = rfPredAll
+
+#prep plotting stuff
 statesPath = "C:/repos/data/cb_2018_us_state_5m/cb_2018_us_state_5m.shp"
-states = gpd.read_file(statesPath)  
-ds = None
+states = gpd.read_file(statesPath)    
+stateBorders = states.to_crs(epsg=5070)
+statesList = ['Washington','Oregon','California','Texas','Nevada','Idaho','Montana','Wyoming',
+              'Arizona','New Mexico','Colorado','Utah']    
+stateBorders = stateBorders[stateBorders['NAME'].isin(statesList)]    
 
-#make rasters
-PWSMap = makeGridWithPlots(pwsVec, df_wSpec['lat'], df_wSpec['lon'], gt, pws)
-spPredMap = makeGridWithPlots(pwsPred, df_wSpec['lat'], df_wSpec['lon'], gt, pws)
-rfPredMap = makeGridWithPlots(rfPredAll, df_wSpec['lat'], df_wSpec['lon'], gt, pws)
-
-
-plot_map(PWSMap, pwsExtent, states, clrmap='Dark2', title='PWS', vmin=0, vmax=6)
-plot_map(spPredMap, pwsExtent, states, clrmap='Dark2', title='species prediction', vmin=0, vmax=6)
-plot_map(rfPredMap, pwsExtent, states, clrmap='Dark2', title='RF prediction', vmin=0, vmax=6)
-plot_map(spPredMap-PWSMap, pwsExtent, states, clrmap='Dark2', title='species prediction - obs', vmin=-3, vmax=3)
-plot_map(rfPredMap-PWSMap, pwsExtent, states, clrmap='Dark2', title='RF prediction - obs', vmin=-3, vmax=3)
-
-
-#TODO DECIDE WHAT TO PLOT, ADD COLORBAR. fix proj
-
-
-#build from plotFIALocations.py. AGK ongoing!!!
-
+#Plot PWS 
+fig = plt.figure(figsize=(10, 3))
+gs = gridspec.GridSpec(1, 4, width_ratios=[1, 1, 1, 0.2])
+ax1 = fig.add_subplot(gs[0])
+# Convert the dataframe to a GeoDataFrame
+geometry = [Point(xy) for xy in zip(dfPWS['lon'], dfPWS['lat'])]
+gdf = gpd.GeoDataFrame(dfPWS, geometry=geometry)
+# Set the coordinate reference system to WGS84, then project to Albers (5070)
+gdf.set_crs(epsg=4326, inplace=True)
+gdf_albers = gdf.to_crs(epsg=5070)
+stateBorders.boundary.plot(ax=ax1, linewidth=1, color='black')
+ax1 = gdf_albers.plot(column='pws', cmap='cool', vmin=0, vmax=5, markersize=0.5, ax=ax1)
+ax1.set_title('True PWS', fontsize=18)
+ax1.axis('off')
+plt.xticks([])
+plt.yticks([])
+ax2 = fig.add_subplot(gs[1])
+# Convert the dataframe to a GeoDataFrame
+geometry = [Point(xy) for xy in zip(dfSpPred['lon'], dfSpPred['lat'])]
+gdf = gpd.GeoDataFrame(dfSpPred, geometry=geometry)
+# Set the coordinate reference system to WGS84, then project to Albers (5070)
+gdf.set_crs(epsg=4326, inplace=True)
+gdf_albers = gdf.to_crs(epsg=5070)
+stateBorders.boundary.plot(ax=ax2, linewidth=1, color='black')
+ax2 = gdf_albers.plot(column='pws', cmap='cool', vmin=0, vmax=5, markersize=0.5, ax=ax2)
+ax2.set_title('Species PWS', fontsize=18)
+ax2.axis('off')
+plt.xticks([])
+plt.yticks([])
+ax3 = fig.add_subplot(gs[2])
+# Convert the dataframe to a GeoDataFrame
+geometry = [Point(xy) for xy in zip(dfRFPred['lon'], dfRFPred['lat'])]
+gdf = gpd.GeoDataFrame(dfRFPred, geometry=geometry)
+# Set the coordinate reference system to WGS84, then project to Albers (5070)
+gdf.set_crs(epsg=4326, inplace=True)
+gdf_albers = gdf.to_crs(epsg=5070)
+stateBorders.boundary.plot(ax=ax3, linewidth=1, color='black')
+ax3 = gdf_albers.plot(column='pws', cmap='cool', vmin=0, vmax=5, markersize=0.5, ax=ax3)
+ax3.set_title('PWS from RF', fontsize=18)
+ax3.axis('off')
+plt.xticks([])
+plt.yticks([])
+#add same colorbar for all
+cbar_ax = fig.add_subplot(gs[3])
+sm = plt.cm.ScalarMappable(cmap='cool', norm=plt.Normalize(vmin=0, vmax=5))
+sm._A = []
+cbar = fig.colorbar(sm, cax=cbar_ax)
+cbar.ax.tick_params(labelsize=16)
+plt.savefig("../figures/PWSDriversPaper/predictedPWSMaps.jpeg", dpi=300)
 
 '''
 dill.dump_session('./RFregression_dill.pkl')
