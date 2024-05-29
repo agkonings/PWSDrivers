@@ -537,7 +537,7 @@ def plot_top_ale(regr, X_test, savePath = None):
     features = ['ndvi','vpd_mean', 'slope', 'ppt_cv']
     feature_names = prettify_names_wunits(features)
     ftCnt = 0
-    figALEs, axs = plt.subplots(nrows=2, ncols=2, figsize = (6,6))
+    figALEs, axs = plt.subplots(nrows=2, ncols=2, figsize = (5,5))
     plt.subplots_adjust(hspace=0.5)
     plt.subplots_adjust(wspace=0.5)
     for feature, feature_name, ax in zip(features, feature_names, axs.ravel()):
@@ -550,13 +550,15 @@ def plot_top_ale(regr, X_test, savePath = None):
         plt.figure(figALEs.number)    
         ax.plot(x_data, y_data, color="black")
         ax.set_xlabel(feature_name, fontsize = 18)
+        if feature is 'ndvi' or feature is 'slope': #lable only left column
+            ax.set_ylabel('ALE', fontsize = 18)
         ax.tick_params(axis='both', labelsize = 16)
         sns.rugplot(X_test[feature], ax=ax, alpha=0.2)    
 
     
     figALEs.show()
     if savePath != None:
-        figALEs.savefig(savePath, dpi=300)
+        figALEs.savefig(savePath, dpi=300, bbox_inches='tight')
     return plt
 
 
