@@ -14,7 +14,6 @@ import sklearn.preprocessing
 import matplotlib.patches
 import sklearn.inspection
 from sklearn.inspection import permutation_importance
-import sklearn.metrics
 from scipy.stats.stats import spearmanr
 from scipy.stats.stats import pearsonr
 from scipy.stats import gaussian_kde
@@ -179,29 +178,30 @@ def regress(df, optHyperparam=False):
     """
     # separate data into features and labels
     X = df.drop("pws",axis = 1)
-    y = df['pws']
-    # separate into train and test set
-    X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(
-        X, y, test_size=0.1, random_state=32) 
+    y = df['pws']    
     
     '''
     # Checking if leaves or node_impurity affects performance
     # after running found that it has almost no effect (R2 varies by 0.01)
     '''
     if optHyperparam is True:
-        for leaves in [3, 8, 15]: #[6,7,8,9,10,12, 14, 15]:
+        # separate into train and test set
+        X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(
+        X, y, test_size=0.1, random_state=32) 
+        for leaves in [3, 4, 15]: #[6,7,8,9,10,12, 14, 15]:
             for decrease in [ 1e-8, 1e-10]: 
-                for nEst in [50,120]: #[50,90,120,140]: 
+                for nEst in [50,120,200,500,600]: #[50,90,120,140]: 
                         for depth in [8, 15]: #8, 15, 25
-                            # construct rf model
-                            regrn = sklearn.ensemble.RandomForestRegressor(min_samples_leaf=leaves, \
-                                  max_depth = depth, min_impurity_decrease=decrease, n_estimators = nEst)
-                            # train
-                            regrn.fit(X_train, y_train)
-                            # test set performance
-                            score = regrn.score(X_test,y_test)             
-                            print(f"[INFO] score={score:0.3f}, leaves={leaves}, decrease={decrease}, nEst = {nEst}, depth={depth}")
-                            # choose min leaves in terminal node and node impurity
+                            for max_feat in ['sqrt','auto']:
+                                # construct rf model
+                                regrn = sklearn.ensemble.RandomForestRegressor(min_samples_leaf=leaves, \
+                                    max_depth = depth, min_impurity_decrease=decrease, n_estimators = nEst, max_features=max_feat)
+                                # train
+                                regrn.fit(X_train, y_train)
+                                # test set performance
+                                scoreTrain = regrn.score(X_train, y_train)
+                                score = regrn.score(X_test,y_test)             
+                                print(f"[INFO] scoreTrain={scoreTrain:0.3f}, score={score:0.3f}, leaves={leaves}, decrease={decrease}, nEst = {nEst}, depth={depth}, nSplit={max_feat}")                                
                             
                            
     #can get highest with 3 leaves, 120 nEst, decrease 1e-8, but that seems like low number of leaves
@@ -210,15 +210,45 @@ def regress(df, optHyperparam=False):
     decrease = 1e-8
     depth = 8
     nEst = 120
+    max_feat = 'auto'
     # construct rf model
-    regrn = sklearn.ensemble.RandomForestRegressor(min_samples_leaf=leaves, max_depth=depth, \
-                      min_impurity_decrease=decrease, n_estimators = nEst)
+
+    #naive CV does horribly because KFold splits along indices, but the data are 
+    #geographically distributed. So use a shuffled dataset to get better folds
+    shuffled_df = df.sample(frac=1)
+    shuffledy = shuffled_df['pws']
+    shuffledX = shuffled_df.drop("pws", axis = 1)    
+    
+    #core cross-validation calcluations
+    folds = sklearn.model_selection.KFold(n_splits=10)
+    scoresCV = []
+    trainIndStore = []
+    testIndStore = []
+    for train, test in folds.split(shuffledX):
+        trainIndStore.append(train)
+        testIndStore.append(test)
+        X_train_CV, X_test_CV, y_train_CV, y_test_CV = shuffledX.iloc[train], shuffledX.iloc[test], shuffledy.iloc[train], shuffledy.iloc[test]
+        regrnCV = sklearn.ensemble.RandomForestRegressor(min_samples_leaf=leaves, \
+                                    max_depth = depth, min_impurity_decrease=decrease, n_estimators = nEst, max_features='auto')
+        regrnCV.fit(X_train_CV, y_train_CV)
+        scoresCV.append(regrnCV.score(X_test_CV, y_test_CV))
+    print(f"[CV Score stats] mean={np.mean(scoresCV):0.3f}, std={np.std(scoresCV):0.3f}")
+    print("full CV scores:", str(scoresCV))
+    
+    #re-construct final RF model, from fold with performance closest to mean
+    #foo, meanFold = np.min( np.abs(scoresCV - np.mean(scoresCV)) )
+    meanFold = np.argmin( np.abs(scoresCV - np.mean(scoresCV)) )
+    X_train, X_test = shuffledX.iloc[trainIndStore[meanFold]], shuffledX.iloc[testIndStore[meanFold]]
+    y_train, y_test = shuffledy.iloc[trainIndStore[meanFold]], shuffledy.iloc[testIndStore[meanFold]]
+        
     # train
+    regrn = sklearn.ensemble.RandomForestRegressor(min_samples_leaf=leaves, max_depth=depth, \
+                  min_impurity_decrease=decrease, n_estimators = nEst, max_features='auto')
     regrn.fit(X_train, y_train)
     # test set performance
     score = regrn.score(X_test,y_test)
     scoreTrain = regrn.score(X_train, y_train)
-    #print(f"[INFOTrain] score={scoreTrain:0.3f}, leaves={leaves}, decrease={decrease}")
+    print(f"[INFOTrain] score={scoreTrain:0.3f}, leaves={leaves}, decrease={decrease}")
     print(f"[INFO] score={score:0.3f}, leaves={leaves}, decrease={decrease}")
     
     # assemble all importance with feature names and colors
@@ -431,25 +461,6 @@ def plot_importance_by_category(imp):
     plot.show()
         
     return plt
-    
-def plot_importance_plants(imp):
-    '''
-    Feature importance of the plant categories only
-    '''
-    
-    plantsImp = imp[imp['color'] == "yellowgreen"]
-    plantsImp = plantsImp.sort_values("importance")
-    
-    fig, ax = plt.subplots(figsize = (3.5,2))
-    plantsImp.plot.barh(y = "importance",x = "symbol", color = plantsImp.color, edgecolor = "grey", ax = ax,legend =False )
-    
-    ax.set_xlabel("Variable importance")
-    ax.set_ylabel("")
-    # Hide the right and top spines
-    ax.spines['right'].set_visible(False)
-    ax.spines['top'].set_visible(False)
-    
-    plt.tight_layout()
 
 def plot_pdp(regr, X_test):
     """
@@ -576,8 +587,8 @@ def plot_R2_by_category(singleCat):
     ax.set_ylabel("R$^2$")  
     ax.set_xlabel("")  
     # Hide the right and top spines
-    ax1.spines['right'].set_visible(False)
-    ax1.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
     
     plt.tight_layout()
      
@@ -695,7 +706,7 @@ for var in df_noSpec.columns:
         df_noSpec[var] = df_noSpec[var] + np.random.normal(0, reasonableNoise, len(df_noSpec))
 '''
 now actually train model on everything except the species
-'''
+
 #Replace trained model with pickled version
 prevMod = dill.load( open('./RFregression_dill.pkl', 'rb') )
 regrn = getattr(prevMod, 'regrn')
@@ -707,36 +718,13 @@ y_test = getattr(prevMod, 'y_test')
 # old code:
 # Train rf#
 X_test, y_test, regrn, score,  imp = regress(df_noSpec, optHyperparam=False)  
-'''
+
+
 # make plots
 ax = plot_corr_feats(df_noSpec)
 pltImp = plot_importance(imp)
-pltPDP = plot_pdp(regrn, X_test)
-pltPDP2 = plot_top_pdp(regrn, X_test)
-pltALE = plot_top_ale(regrn, X_test, savePath = "../figures/PWSDriversPaper/ales.jpeg")
-pltImpCat = plot_importance_by_category(imp)
-#pltImpCat.savefig("../figures/PWSDriversPaper/importanceCategories.jpeg", dpi=300)
-singleCat = regress_per_category(df_noSpec)
-pltR2Cat = plot_R2_by_category(singleCat)
-#pltR2Cat.savefig("../figures/PWSDriversPaper/R2OnlyCategories.jpeg", dpi=300)
-
-'''
-For reviewer 1, calculate model performance without NDVI or VPD
-'''
-print('no VPD')
-df_noVPD = df_noSpec.copy()
-df_noVPD.drop('vpd_mean', axis = 1, inplace = True)
-X_test_nV, y_test_nV, regrn_nV, score_noVPD, imp_nV = regress(df_noVPD, optHyperparam=False)
-print('no NDVI')
-df_noNDVI = df_noSpec.copy()
-df_noNDVI.drop('ndvi', axis = 1, inplace = True)
-X_test_nN, y_test_nN, regrn_nN, score_noNDVI, imp_nN = regress(df_noNDVI, optHyperparam=False)
-print('no VPD and no NDVI')
-df_noVPDnoNDVI = df_noSpec.copy()
-df_noVPDnoNDVI.drop('ndvi', axis = 1, inplace = True)
-df_noVPDnoNDVI.drop('vpd_mean', axis = 1, inplace = True)
-X_test_nVnN, y_test_nVnN, regrn_nVnN, score_noVPDnoNDVI, imp_nVnN = regress(df_noVPDnoNDVI, optHyperparam=False)
-
+pltALE = plot_top_ale(regrn, X_test, savePath = None)
+#pltALE = plot_top_ale(regrn, X_test, savePath = "../figures/PWSDriversPaper/ales.jpeg")
 
 '''
 now check how explanatory power compares if don't have species vs. if have 
@@ -806,13 +794,11 @@ ax2.annotate(f"R$^2$={score:0.2f}", (0.61,0.06),xycoords = "axes fraction",
 ax2.annotate('b)', (-0.2,1.10),xycoords = "axes fraction", 
              fontsize=14, weight='bold')
 fig.tight_layout()
-plt.savefig("../figures/PWSDriversPaper/densityPlotsModels.jpeg", dpi=300)
+#plt.savefig("../figures/PWSDriversPaper/densityPlotsModels.jpeg", dpi=300)
 
 ''' 
 Make some maps of PWS as observed, predicted, and error
 '''
-
-
 #make dataframes
 dfPWS = df_wSpec[['lat','lon','pws']]
 dfSpPred = df_wSpec[['lat','lon']].copy()
@@ -876,7 +862,27 @@ sm = plt.cm.ScalarMappable(cmap='cool', norm=plt.Normalize(vmin=0, vmax=5))
 sm._A = []
 cbar = fig.colorbar(sm, cax=cbar_ax)
 cbar.ax.tick_params(labelsize=16)
-plt.savefig("../figures/PWSDriversPaper/predictedPWSMaps.jpeg", dpi=300)
+#plt.savefig("../figures/PWSDriversPaper/predictedPWSMaps.jpeg", dpi=300)
+
+'''
+For reviewer 1/suppmat, calculate model performance without NDVI or VPD
+'''
+singleCat = regress_per_category(df_noSpec)
+pltR2Cat = plot_R2_by_category(singleCat)
+#pltR2Cat.savefig("../figures/PWSDriversPaper/R2OnlyCategories.jpeg", dpi=300)
+print('no VPD')
+df_noVPD = df_noSpec.copy()
+df_noVPD.drop('vpd_mean', axis = 1, inplace = True)
+X_test_nV, y_test_nV, regrn_nV, score_noVPD, imp_nV = regress(df_noVPD, optHyperparam=False)
+print('no NDVI')
+df_noNDVI = df_noSpec.copy()
+df_noNDVI.drop('ndvi', axis = 1, inplace = True)
+X_test_nN, y_test_nN, regrn_nN, score_noNDVI, imp_nN = regress(df_noNDVI, optHyperparam=False)
+print('no VPD and no NDVI')
+df_noVPDnoNDVI = df_noSpec.copy()
+df_noVPDnoNDVI.drop('ndvi', axis = 1, inplace = True)
+df_noVPDnoNDVI.drop('vpd_mean', axis = 1, inplace = True)
+X_test_nVnN, y_test_nVnN, regrn_nVnN, score_noVPDnoNDVI, imp_nVnN = regress(df_noVPDnoNDVI, optHyperparam=False)
 
 '''
 dill.dump_session('./RFregression_dill.pkl')
