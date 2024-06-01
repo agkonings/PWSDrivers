@@ -91,7 +91,7 @@ def get_categories_and_colors():
     
     plant = ['basal_area','canopy_height', "agb",'ndvi', "nlcd","species",'isohydricity', 'root_depth', 'p50', 'gpmax', 'c', 'g1']
     soil = ['clay', 'sand','silt','thetas', 'ks', 'vanGen_n','Sr','Sbedrock','bulk_density','theta_third_bar','AWS']
-    climate = ['vpd_mean', 'vpd_std',"ppt_mean","ppt_cv","t_mean","t_std","ppt_lte_100","AI"]
+    climate = ['vpd_mean', 'vpd_std',"ppt_mean","ppt_cv","t_mean","t_std","ppt_lte_100","AI",'monsoon_index']
     topo = ['elevation', 'aspect', 'slope', 'twi',"dist_to_water"]
     
     return green, brown, blue, yellow, plant, soil, climate, topo 
@@ -106,6 +106,7 @@ def prettify_names(names):
                  "elevation":"Elevation",
                  "ppt_mean":"Precip$_{mean}$",
                  "ppt_cv":"Precip$_{CV}$",
+                 "monsoon_index":"Monsoon index",
                  "agb":"Biomass",
                  "sand":"Sand %",
                  "clay":"Clay %",
@@ -151,6 +152,7 @@ def prettify_names_wunits(names):
                  "ndvi":"$NDVI_{mean} [-]$",
                  "vpd_mean":"VPD$_{mean}$ [hPa]",
                  "ppt_cv":"Precip$_{CV}$ [-]",
+                 "monsoon_index":"Monsoon index [-]",
                  "bulk_density":"Bulk density [g/cm$^3$]",                
                  "aspect":"Aspect [$^o$]",
                  "slope":"Slope [%]",
@@ -545,10 +547,10 @@ def plot_top_ale(regr, X_test, savePath = None):
     """
     # Which features need PDPs? print below line and choose the numbers
     # corresponding to the feature
-    features = ['ndvi','vpd_mean', 'slope', 'ppt_cv']
+    features = ['ndvi','vpd_mean', 'monsoon_index','slope']
     feature_names = prettify_names_wunits(features)
     ftCnt = 0
-    figALEs, axs = plt.subplots(nrows=2, ncols=2, figsize = (5,5))
+    figALEs, axs = plt.subplots(nrows=2, ncols=2, figsize = (6,6))
     plt.subplots_adjust(hspace=0.5)
     plt.subplots_adjust(wspace=0.5)
     for feature, feature_name, ax in zip(features, feature_names, axs.ravel()):
@@ -561,9 +563,16 @@ def plot_top_ale(regr, X_test, savePath = None):
         plt.figure(figALEs.number)    
         ax.plot(x_data, y_data, color="black")
         ax.set_xlabel(feature_name, fontsize = 18)
-        if feature is 'ndvi' or feature is 'slope': #lable only left column
+        if feature is 'ndvi' or feature is 'monsoon_index': #lable only left column
             ax.set_ylabel('ALE', fontsize = 18)
-        ax.tick_params(axis='both', labelsize = 16)
+        if feature is 'vpd_mean':
+            ax.set_xlim(-0.1,35) #cut off very extreme range where have just a few distribution points
+        if feature is 'slope':
+            ax.set_xlim(-0.1,10.8) #cut off very extreme range where have just a few distribution points
+            ax.xaxis.set_ticks(np.arange(3, 10, 3))
+        if feature is 'monsoon_index':
+            ax.xaxis.set_ticks(np.arange(0, 0.7, 0.2))            
+        ax.tick_params(axis='both', labelsize = 14)
         sns.rugplot(X_test[feature], ax=ax, alpha=0.2)    
 
     
@@ -614,7 +623,7 @@ def regress_per_category(df, optHyperparam=False):
     #Run a few alternative versions of the RF model with reduced inputs
     print('only climate')
     df_onlyClimate = df.copy()
-    df_onlyClimate = df_onlyClimate[['pws','vpd_mean','ppt_cv','AI']]
+    df_onlyClimate = df_onlyClimate[['pws','vpd_mean','monsoon_index','AI']]
     X_test_oC, y_test_oC, regrn_oC, score_onlyClimate, imp_oC = regress(df_onlyClimate, optHyperparam=False)
     print('only NDVI')
     df_onlyPlant = df.copy()
@@ -664,9 +673,29 @@ def plot_map(arrayToPlot, pwsExtent, stateBorders, title = None, vmin = None, vm
         plt.savefig(savePath)
     plt.show() 
     
+def scatter_monsoon_cv(monsoon_ind, ppt_cv, savePath = None):
+    '''
+    density plot of cross-correlation between monsoon index and coefficient of
+    variation of precipitation to show U-shaped pattern
+    '''
+    
+    xy = np.vstack([monsoon_ind, ppt_cv])
+    kde = gaussian_kde(xy)(xy)
+
+
+    fig, ax = plt.subplots(figsize = (3,3)) 
+    ax.scatter(monsoon_ind, ppt_cv, c=kde, s = 1, alpha = 0.4, cmap='inferno')
+    ax.set_box_aspect(1)
+    ax.set_xlabel("Monsoon index [-]", fontsize = 14)
+    ax.set_ylabel("CV of precipitation [-]", fontsize = 14)
+    ax.set_xlim(0,0.7), ax.set_ylim(0,2.1)
+    plt.show()
+    
+    if savePath != None:
+        fig.savefig(savePath, dpi=300, bbox_inches='tight')
+
     
 plt.rcParams.update({'font.size': 18})
-
 
 #%% Load data
 dfPath = os.path.join(dirs.dir_data, 'inputFeatures_wgNATSGO_wBA_wHAND.h5')
@@ -675,7 +704,7 @@ df_wSpec =  load_data(dfPath, pwsPath)
 
 #sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.75, see pickFeatures.py
 #further added nlcd to drop list since doesn't really make sense if focusing on fia plots
-droppedVarsList = ['elevation','dry_season_length','t_mean','ppt_mean','t_cv','ppt_lte_100',
+droppedVarsList = ['elevation','dry_season_length','t_mean','ppt_mean','t_cv',
                 'canopy_height', 'HAND','restrictive_depth','clay',
                 'dist_to_water','basal_area','theta_third_bar','AWS','sand',
                 'agb','p50','gpmax','vpd_cv','root_depth']
@@ -687,11 +716,18 @@ df_wSpec = df_wSpec[df_wSpec['nlcd']<70] #unique values are 41, 42, 43, 52
 #remove mixed forest
 df_wSpec = df_wSpec[df_wSpec['nlcd'] != 43] #unique values are 41, 42, 43, 52
 
+#make plot of cross-correlation between monsoon index and precipitation CV to explain ALE plots
+scatter_monsoon_cv(df_wSpec['monsoon_index'], df_wSpec['ppt_cv'], savePath = "../figures/PWSDriversPaper/scatterPrecipVars.jpeg")
+
+#then further drop CV of precipitation from rest of analysis
+df_wSpec = cleanup_data(df_wSpec, 'ppt_cv')
+
 '''
 #save for exact use in checkCrossCorrs.py
-pickleLoc = './data/df_wSpec.pkl'
+pickleLoc = 'C:/repos/pws_drivers/data/df_wSpecwMonsoon.pkl'
 with open(pickleLoc, 'wb') as file:
     pickle.dump(df_wSpec, file)
+error
 '''
     
 #then drop species, lat, lon for actual RF
@@ -723,14 +759,9 @@ X_test, y_test, regrn, score,  imp = regress(df_noSpec, optHyperparam=False)
 # make plots
 ax = plot_corr_feats(df_noSpec)
 pltImp = plot_importance(imp)
-pltALE = plot_top_ale(regrn, X_test, savePath = None)
-#pltALE = plot_top_ale(regrn, X_test, savePath = "../figures/PWSDriversPaper/ales.jpeg")
-
+pltALE = plot_top_ale(regrn, X_test, savePath = "../figures/PWSDriversPaper/ales.jpeg")
 '''
-now check how explanatory power compares if don't have species vs. if have 
-top 10 species one-hot-encoded
-so want one run wSpec where have one-hot-encoded, don't drop species
-and one run noSpec whre don't have species, but have same filterlist
+now check how explanatory power compares if don't have species 
 '''
 print('now doing species power calculations')    
 print('predictive ability with species alone')
@@ -794,7 +825,7 @@ ax2.annotate(f"R$^2$={score:0.2f}", (0.61,0.06),xycoords = "axes fraction",
 ax2.annotate('b)', (-0.2,1.10),xycoords = "axes fraction", 
              fontsize=14, weight='bold')
 fig.tight_layout()
-#plt.savefig("../figures/PWSDriversPaper/densityPlotsModels.jpeg", dpi=300)
+plt.savefig("../figures/PWSDriversPaper/densityPlotsModels.jpeg", dpi=300)
 
 ''' 
 Make some maps of PWS as observed, predicted, and error
@@ -862,14 +893,14 @@ sm = plt.cm.ScalarMappable(cmap='cool', norm=plt.Normalize(vmin=0, vmax=5))
 sm._A = []
 cbar = fig.colorbar(sm, cax=cbar_ax)
 cbar.ax.tick_params(labelsize=16)
-#plt.savefig("../figures/PWSDriversPaper/predictedPWSMaps.jpeg", dpi=300)
+plt.savefig("../figures/PWSDriversPaper/predictedPWSMaps.jpeg", dpi=300)
 
 '''
 For reviewer 1/suppmat, calculate model performance without NDVI or VPD
 '''
 singleCat = regress_per_category(df_noSpec)
 pltR2Cat = plot_R2_by_category(singleCat)
-#pltR2Cat.savefig("../figures/PWSDriversPaper/R2OnlyCategories.jpeg", dpi=300)
+pltR2Cat.savefig("../figures/PWSDriversPaper/R2OnlyCategories.jpeg", dpi=300)
 print('no VPD')
 df_noVPD = df_noSpec.copy()
 df_noVPD.drop('vpd_mean', axis = 1, inplace = True)
@@ -884,6 +915,5 @@ df_noVPDnoNDVI.drop('ndvi', axis = 1, inplace = True)
 df_noVPDnoNDVI.drop('vpd_mean', axis = 1, inplace = True)
 X_test_nVnN, y_test_nVnN, regrn_nVnN, score_noVPDnoNDVI, imp_nVnN = regress(df_noVPDnoNDVI, optHyperparam=False)
 
-'''
+
 dill.dump_session('./RFregression_dill.pkl')
-'''

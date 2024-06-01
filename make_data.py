@@ -138,7 +138,7 @@ def create_h5(store_path):
         'root_depth','canopy_height','p50','gpmax', 'c','g1','nlcd',
         "elevation","aspect","slope","twi","dry_season_length","ndvi",\
             "vpd_mean","vpd_cv", "dist_to_water","agb","ppt_mean","ppt_cv",\
-        "t_mean","t_cv","ppt_lte_100", "AI","Sr","AWS", "restrictive_depth", "species", "basal_area", "lon","lat","HAND"]
+        "t_mean","t_cv","monsoon_index", "AI","Sr","AWS", "restrictive_depth", "species", "basal_area", "lon","lat","HAND"]
     
     array = np.zeros((len(keys), data['pws'].shape[0],data['pws'].shape[1])).astype('float')
     #array[0] = data['pws']
@@ -178,7 +178,7 @@ def create_h5(store_path):
     array[25] = get_value( os.path.join(regridDir, 'tMean.tif'), 2)    
     tStd = get_value( os.path.join(regridDir, 'tStd.tif'), 2)    
     array[26] = tStd/array[25]
-    array[27] = get_value( os.path.join(regridDir, 'ppt_lte_100.tif'), 1)    
+    array[27] = get_value( os.path.join(regridDir, 'frac_summer_precip_1979_2021_PWSaligned_v4.tif'), 1)    
     array[28] = get_value( os.path.join(regridDir, 'aridity_index.tif'), 1)
     array[29] = get_value( os.path.join(regridDir, 'Sr_2020_unmasked_4km_westernUS.tif'), 1)    
     array[30] = get_value( os.path.join(regridDir, 'AWS_0to150cm_4km_westernUS.tif'), 1)

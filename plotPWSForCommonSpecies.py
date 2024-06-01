@@ -98,7 +98,7 @@ combdf['SPCD'].value_counts()
 #807 = Blue oak = 174
 
 #look at common species at locations where  asingle species dominates FIA plot
-pickleLoc = '../data/dominantLocs.pkl'
+pickleLoc = './data/dominantLocs.pkl'
 with open(pickleLoc, 'rb') as file:
     dominantLocs = pickle.load(file)
 #five most common among dominatLocs
@@ -114,7 +114,7 @@ with open(pickleLoc, 'rb') as file:
 #106= common Pinyon = X in dominantLocs
 
 #look at common species at actual sites used in study (also filtered for NLCD, data availability)
-pickleLoc = '../data/df_wSpec.pkl'
+pickleLoc = './data/df_wSpecwMonsoon.pkl'
 rfLocs = pd.read_pickle(pickleLoc)
 vc = rfLocs['species'].value_counts()
 #five most common among actual sites
@@ -128,8 +128,8 @@ vc = rfLocs['species'].value_counts()
 Ok, ready to plot!
 '''
 
-plotSpecList = [202, 122, 65, 756, 69]
-legLabels = ["Douglas-fir", "Ponderosa pine", "Utah juniper", "Honey mesquite", "Oneseed juniper", "All"]
+plotSpecList = [202, 756, 122, 65, 69]
+legLabels = ["Douglas-fir", "Honey mesquite", "Ponderosa pine", "Utah juniper", "Oneseed juniper", "All"]
 
 #filter dataframe to be used for plotting purposes so that it only 
 #contains sites where the dominant cover is one of the species to be plotted
