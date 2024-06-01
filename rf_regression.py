@@ -547,7 +547,7 @@ def plot_top_ale(regr, X_test, savePath = None):
     """
     # Which features need PDPs? print below line and choose the numbers
     # corresponding to the feature
-    features = ['ndvi','vpd_mean', 'monsoon_index','slope']
+    features = ['ndvi','vpd_mean', 'slope','ppt_cv']
     feature_names = prettify_names_wunits(features)
     ftCnt = 0
     figALEs, axs = plt.subplots(nrows=2, ncols=2, figsize = (6,6))
@@ -563,15 +563,15 @@ def plot_top_ale(regr, X_test, savePath = None):
         plt.figure(figALEs.number)    
         ax.plot(x_data, y_data, color="black")
         ax.set_xlabel(feature_name, fontsize = 18)
-        if feature is 'ndvi' or feature is 'monsoon_index': #lable only left column
+        if feature is 'ndvi' or feature is 'slope': #lable only left column
             ax.set_ylabel('ALE', fontsize = 18)
         if feature is 'vpd_mean':
             ax.set_xlim(-0.1,35) #cut off very extreme range where have just a few distribution points
         if feature is 'slope':
             ax.set_xlim(-0.1,10.8) #cut off very extreme range where have just a few distribution points
             ax.xaxis.set_ticks(np.arange(3, 10, 3))
-        if feature is 'monsoon_index':
-            ax.xaxis.set_ticks(np.arange(0, 0.7, 0.2))            
+        #if feature is 'monsoon_index':
+        #    ax.xaxis.set_ticks(np.arange(0, 0.7, 0.2))            
         ax.tick_params(axis='both', labelsize = 14)
         sns.rugplot(X_test[feature], ax=ax, alpha=0.2)    
 
@@ -623,7 +623,7 @@ def regress_per_category(df, optHyperparam=False):
     #Run a few alternative versions of the RF model with reduced inputs
     print('only climate')
     df_onlyClimate = df.copy()
-    df_onlyClimate = df_onlyClimate[['pws','vpd_mean','monsoon_index','AI']]
+    df_onlyClimate = df_onlyClimate[['pws','vpd_mean','ppt_cv','AI']]
     X_test_oC, y_test_oC, regrn_oC, score_onlyClimate, imp_oC = regress(df_onlyClimate, optHyperparam=False)
     print('only NDVI')
     df_onlyPlant = df.copy()
@@ -704,7 +704,7 @@ df_wSpec =  load_data(dfPath, pwsPath)
 
 #sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.75, see pickFeatures.py
 #further added nlcd to drop list since doesn't really make sense if focusing on fia plots
-droppedVarsList = ['elevation','dry_season_length','t_mean','ppt_mean','t_cv',
+droppedVarsList = ['elevation','dry_season_length','t_mean','ppt_mean','t_cv','monsoon_index',
                 'canopy_height', 'HAND','restrictive_depth','clay',
                 'dist_to_water','basal_area','theta_third_bar','AWS','sand',
                 'agb','p50','gpmax','vpd_cv','root_depth']
@@ -716,18 +716,19 @@ df_wSpec = df_wSpec[df_wSpec['nlcd']<70] #unique values are 41, 42, 43, 52
 #remove mixed forest
 df_wSpec = df_wSpec[df_wSpec['nlcd'] != 43] #unique values are 41, 42, 43, 52
 
-#make plot of cross-correlation between monsoon index and precipitation CV to explain ALE plots
+'''
+If keep monsoon index
+##make plot of cross-correlation between monsoon index and precipitation CV for reviewer 2
 scatter_monsoon_cv(df_wSpec['monsoon_index'], df_wSpec['ppt_cv'], savePath = "../figures/PWSDriversPaper/scatterPrecipVars.jpeg")
-
 #then further drop CV of precipitation from rest of analysis
 df_wSpec = cleanup_data(df_wSpec, 'ppt_cv')
+'''
 
 '''
 #save for exact use in checkCrossCorrs.py
-pickleLoc = 'C:/repos/pws_drivers/data/df_wSpecwMonsoon.pkl'
+pickleLoc = 'C:/repos/pws_drivers/data/df_wSpec.pkl'
 with open(pickleLoc, 'wb') as file:
     pickle.dump(df_wSpec, file)
-error
 '''
     
 #then drop species, lat, lon for actual RF

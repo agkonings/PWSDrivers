@@ -114,7 +114,7 @@ with open(pickleLoc, 'rb') as file:
 #106= common Pinyon = X in dominantLocs
 
 #look at common species at actual sites used in study (also filtered for NLCD, data availability)
-pickleLoc = './data/df_wSpecwMonsoon.pkl'
+pickleLoc = './data/df_wSpec.pkl'
 rfLocs = pd.read_pickle(pickleLoc)
 vc = rfLocs['species'].value_counts()
 #five most common among actual sites

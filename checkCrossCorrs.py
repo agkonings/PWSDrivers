@@ -144,7 +144,7 @@ def prettify_names(names):
     return [new_names[key] for key in names]
 
 # Load data consistent with way it's done in rf_regression.py
-pickleLoc = 'C:/repos/pws_drivers/data/df_wSpecwMonsoon.pkl'
+pickleLoc = 'C:/repos/pws_drivers/data/df_wSpec.pkl'
 df_wSpec = pd.read_pickle(pickleLoc)
 
 ''' 
@@ -169,10 +169,10 @@ lonInd = np.round( (df_wSpec['lon'].to_numpy() - gt[0])/gt[1] ).astype(int)
 dfDFMC = df_wSpec.copy()
 dfDFMC['mnDFMC'] = mnDFMCMap[latInd, lonInd]
 dfDFMC['stdDFMC'] = stdDFMCMap[latInd, lonInd]
-dfDFMC = dfDFMC[['mnDFMC','stdDFMC','vpd_mean','AI','monsoon_index', 'pws']]        
+dfDFMC = dfDFMC[['mnDFMC','stdDFMC','vpd_mean','AI','ppt_cv', 'pws']]        
 
 corrMatDFMC = dfDFMC.corr()
-corrMatDFMC = corrMatDFMC.drop(['vpd_mean','AI','monsoon_index'], axis=1) 
+corrMatDFMC = corrMatDFMC.drop(['vpd_mean','AI','ppt_cv'], axis=1) 
 r2bcmap = sns.color_palette("vlag", as_cmap=True)
 fig, ax = plt.subplots(figsize = (3,3))
 sns.heatmap(np.round(corrMatDFMC, decimals=2),
@@ -180,13 +180,13 @@ sns.heatmap(np.round(corrMatDFMC, decimals=2),
         yticklabels=prettify_names(corrMatDFMC.index.values),
         cmap = r2bcmap, vmin=-0.4, vmax=0.4,
         annot=True,  fmt=".2f", annot_kws={'size': 10})
-plt.savefig("../figures/PWSDriversPaper/crossCorrDFMCStats_wMonsoon.jpeg", dpi=300, bbox_inches = "tight")
+plt.savefig("../figures/PWSDriversPaper/crossCorrDFMCStats.jpeg", dpi=300, bbox_inches = "tight")
 
 '''
 Make general cross-correlation map
 '''
 df_wSpec.drop(columns=['species','lat','lon','nlcd'], inplace=True)
-columnOrder = ['pws', 'vpd_mean', 'AI', 'monsoon_index', 'ndvi', 'bulk_density', 'ks', 'Sr', 'aspect',
+columnOrder = ['pws', 'vpd_mean', 'AI', 'ppt_cv', 'ndvi', 'bulk_density', 'ks', 'Sr', 'aspect',
        'slope', 'twi']
 df_wSpec = df_wSpec[columnOrder] #re-order manually to make easier to read
 corrMat = df_wSpec.corr()
@@ -197,13 +197,13 @@ sns.heatmap(corrMat, mask=mask,
         yticklabels=prettify_names(corrMat.index.values),
         cmap = r2bcmap, vmin=-0.65, vmax=0.65)
         #annot=True,  fmt=".1f", annot_kws={'size': 10})
-plt.savefig("../figures/PWSDriversPaper/crossCorr_wMonsoon.jpeg", dpi=300, bbox_inches = "tight")
+plt.savefig("../figures/PWSDriversPaper/crossCorr.jpeg", dpi=300, bbox_inches = "tight")
 
 
 '''
 Make climate cross-correlation map
 '''
-df_clim = df_wSpec[['ndvi','vpd_mean','AI','monsoon_index']]
+df_clim = df_wSpec[['ndvi','vpd_mean','AI','ppt_cv']]
 corrClim = df_clim.corr()
 mask = np.triu(np.ones_like(corrClim, dtype=bool))
 fig, ax = plt.subplots()
