@@ -741,9 +741,9 @@ for var in df_noSpec.columns:
     if uniqueCnt[var] < 10000:
         reasonableNoise = 1e-5*df_noSpec[var].median()
         df_noSpec[var] = df_noSpec[var] + np.random.normal(0, reasonableNoise, len(df_noSpec))
-'''
-now actually train model on everything except the species
 
+
+#now actually train model on everything except the species
 #Replace trained model with pickled version
 prevMod = dill.load( open('./RFregression_dill.pkl', 'rb') )
 regrn = getattr(prevMod, 'regrn')
@@ -755,7 +755,7 @@ y_test = getattr(prevMod, 'y_test')
 # old code:
 # Train rf#
 X_test, y_test, regrn, score,  imp = regress(df_noSpec, optHyperparam=False)  
-
+'''
 
 # make plots
 ax = plot_corr_feats(df_noSpec)
@@ -917,4 +917,4 @@ df_noVPDnoNDVI.drop('vpd_mean', axis = 1, inplace = True)
 X_test_nVnN, y_test_nVnN, regrn_nVnN, score_noVPDnoNDVI, imp_nVnN = regress(df_noVPDnoNDVI, optHyperparam=False)
 
 
-dill.dump_session('./RFregression_dill.pkl')
+#dill.dump_session('./RFregression_dill.pkl')
