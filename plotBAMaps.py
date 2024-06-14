@@ -51,8 +51,6 @@ ds = gdal.Open(pwsPath)
 geotransform = ds.GetGeoTransform()
 statesPath = "C:/repos/data/cb_2018_us_state_5m/cb_2018_us_state_5m.shp"
 states = gpd.read_file(statesPath)    
-#Map = df_to_raster(shapdf['shap_vanGen_n'], np.shape(pwsDecThruMayRaster), lat, lon, geotransform)    
-
 pwsExtent = plotting_extent(pwsMap, pwsMap.rio.transform())
 
 

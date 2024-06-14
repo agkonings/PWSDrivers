@@ -23,6 +23,8 @@ from sklearn.tree import plot_tree
 
 import dirs
 
+os.environ['PROJ_LIB'] = 'C:/Users/konings/Anaconda3/envs/pyrseg/Library/share/proj'
+
 def plot_map(arrayToPlot, pwsExtent, stateBorders, title, vmin = None, vmax = None, clrmap = 'YlGnBu', savePath = None):
     '''make map with state borders'''
     
@@ -148,6 +150,10 @@ dfJunThruNov, lat_JtN, lon_JtN = cleanup_data(dfJunThruNov, droppedVarsList)
 commonInd = list(set(dfDecThruMay.index) & set(dfJunThruNov.index))
 pearsonr(dfDecThruMay.pws[commonInd].values, dfJunThruNov.pws[commonInd].values)
 
+
+
+
+
 '''
 At this point, super confused about why there's no seasonal difference
 debug the actual regression and imp generation
@@ -235,6 +241,7 @@ plot_map(pred_JtNMap, pwsExtent, states, 'Predictions, Jun through Nov', vmin = 
 #plot difference in predictions
 diffMap = pred_DtMMap - pred_JtNMap
 plot_map(diffMap, pwsExtent, states, 'Predictions difference', vmin = -1, vmax = 1)
+
 
 #score = regrn.score(X_test,y_test)
 
