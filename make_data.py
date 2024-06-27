@@ -141,7 +141,6 @@ def create_h5(store_path):
         "t_mean","t_cv","ppt_lte_100", "AI","Sr","AWS", "restrictive_depth", "species", "basal_area", "lon","lat","HAND"]
     
     array = np.zeros((len(keys), data['pws'].shape[0],data['pws'].shape[1])).astype('float')
-    #array[0] = data['pws']
     
     
     #add data one by one
