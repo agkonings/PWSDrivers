@@ -89,10 +89,10 @@ def get_categories_and_colors():
     yellow = "khaki"
     purple = "magenta"
     
-    plant = ['basal_area','canopy_height', "agb",'ndvi', "nlcd","species",'isohydricity', 'root_depth', 'p50', 'gpmax', 'c', 'g1']
-    soil = ['clay', 'sand','silt','thetas', 'ks', 'vanGen_n','Sr','Sbedrock','bulk_density','theta_third_bar','AWS']
-    climate = ['vpd_mean', 'vpd_std',"ppt_mean","ppt_cv","t_mean","t_std","ppt_lte_100","AI",'monsoon_index']
-    topo = ['elevation', 'aspect', 'slope', 'twi',"dist_to_water"]
+    plant = ["canopy_height", "agb",'ndvi', "nlcd","species"]
+    soil = ['thetas', 'ks','Sr','Sbedrock','bulk_density','theta_third_bar','AWS']
+    climate = ['vpd_mean', 'vpd_std',"ppt_mean","ppt_cv","t_mean","t_std","AI"]
+    topo = ['aspect', 'slope', 'twi','HAND']
     
     return green, brown, blue, yellow, plant, soil, climate, topo 
 
@@ -102,47 +102,24 @@ def prettify_names(names):
                  "vpd_mean":"VPD$_{mean}$",
                  "vpd_cv":"VPD$_{CV}$",
                  "vpd_std":"VPD$_{std}$",
-                 "thetas":"Soil porosity",
-                 "elevation":"Elevation",
                  "ppt_mean":"Precip$_{mean}$",
                  "ppt_cv":"Precip$_{CV}$",
-                 "monsoon_index":"Monsoon index",
                  "agb":"Biomass",
-                 "sand":"Sand %",
-                 "clay":"Clay %",
-                 "silt":"Silt %",
                  "canopy_height": "Canopy height",
-                 "isohydricity":"Isohydricity",
                  "root_depth":"Root depth",
-                 "hft":"Hydraulic\nfunctional type",
-                 "p50":"$\psi_{50}$",
-                 "gpmax":"$K_{max,x}$",
-                 "c":"Capacitance",
-                 "g1":"g$_1$",
-                 "n":"$n$",
                  "bulk_density":"Bulk density",
-                 "nlcd": "Land cover",
-                 "nlcd_41.0": "Decid forest",
-                 "nlcd_42.0": "Evergrn forest",
-                 "nlcd_43.0": "Mixed forest",
-                 "nlcd_52.0": "Shrub",
-                 "nlcd_71.0": "Grass",
-                 "nlcd_81.0": "Pasture",                 
+                 "nlcd": "Land cover",                
                  "aspect":"Aspect",
                  "slope":"Slope",
                  "twi":"TWI",
-                 "dist_to_water":"Dist to water",
                  "t_mean":"Temp$_{mean}$",
                  "t_std":"Temp$_{st dev}$",
                  "lon":"Lon", "lat":"Lat",
                  "theta_third_bar": "$\psi_{0.3}$",
-                 "vanGen_n":"van Genuchten n",
                  "AWS":"Avail water storage",
                  "AI":"Aridity index",
                  "Sr": "RZ storage",
-                 "restrictive_depth": "Restricton depth",
                  "species":"species",
-                 "basal_area": "Basal area",
                  "HAND":"HAND"
                  }
     return [new_names[key] for key in names]
@@ -336,9 +313,6 @@ def plot_error_pattern(path, df):
     ax: axis handle
 
     """
-#    # Load data
-#    path = os.path.join(dirs.dir_data, 'store_plant_soil_topo_climate_PWSthrough2021v2.h5')
-#    df = cleanup_data(path)
     
     #make map_predictionError function later
     X_test, y_test, regrn, score,  imp = regress(df)
@@ -464,77 +438,6 @@ def plot_importance_by_category(imp):
         
     return plt
 
-def plot_pdp(regr, X_test):
-    """
-    Partial dependance plot
-    requires scikit-learn>=0.24.2
-    Parameters
-    ----------
-    regr : trained rf regression
-    X_test : test set data for creating plot
-    """
-    # Which features need PDPs? print below line and choose the numbers
-    # corresponding to the feature
-    print(list(zip(X_test.columns, range(X_test.shape[1]))))
-    features = np.arange(X_test.shape[1]) #[2,3,7, 12, 4, 13, 11, 18]
-    feature_names = list(X_test.columns[features])
-    feature_names = prettify_names_wunits(feature_names)
-    ftCnt = 0
-    fig, axs = plt.subplots(nrows=4, ncols=3, figsize = (8,6))
-    plt.subplots_adjust(hspace=0.7)
-    plt.subplots_adjust(wspace=0.5)
-    for feature, feature_name, ax in zip(features, feature_names, axs.ravel()):
-        pd_results = sklearn.inspection.partial_dependence(regr, X_test, feature)       
-        #fig, ax = plt.subplots(figsize = (4,4))        
-        #plt.subplot(5,2,ftCnt)
-        ax.plot(pd_results[1][0], pd_results[0][0], color="black")
-        ax.set_xlabel(feature_name, fontsize = 18)
-        if np.mod(ftCnt, 3) == 0:
-            ax.set_ylabel("PWS", fontsize = 18)
-        #axs[rowCnt, colCnt]
-        ax.tick_params(axis='both', labelsize = 16)
-        ftCnt += 1
-    
-    fig.delaxes(axs[3][1])
-    fig.delaxes(axs[3][2])
-    return plt
-
-def plot_top_pdp(regr, X_test):
-    """
-    Partial dependance plot of top features 
-    requires scikit-learn>=0.24.2
-    Manually limit to top features for simplicity of coding
-    Parameters
-    ----------
-    regr : trained rf regression
-    X_test : test set data for creating plot
-    
-    """
-    # Which features need PDPs? print below line and choose the numbers
-    # corresponding to the feature
-    features = ['ndvi','vpd_mean', 'slope', 'ppt_cv']
-    feature_names = prettify_names_wunits(features)
-    ftCnt = 0
-    fig, axs = plt.subplots(nrows=2, ncols=2, figsize = (6,6))
-    plt.subplots_adjust(hspace=0.5)
-    plt.subplots_adjust(wspace=0.5)
-    for feature, feature_name, ax in zip(features, feature_names, axs.ravel()):
-        pd_results = sklearn.inspection.partial_dependence(regr, X_test, feature)       
-        #fig, ax = plt.subplots(figsize = (4,4))        
-        #plt.subplot(5,2,ftCnt)
-        ax.plot(pd_results[1][0], pd_results[0][0], color="black")
-        ax.set_xlabel(feature_name, fontsize = 18)
-        #if np.mod(ftCnt, 3) == 0:
-        #    ax.set_ylabel("PWS", fontsize = 18)
-        #axs[rowCnt, colCnt]
-        ax.tick_params(axis='both', labelsize = 16)
-        ax.set_ylim(1.3,3.0)
-        ftCnt += 1
-        if feature == 'slope':
-            ax.set_xticks([0,2,4,6])
-    
-    return plt
-
 def plot_top_ale(regr, X_test, savePath = None):
     """
     Accumulated local effects plot of top features 
@@ -545,12 +448,10 @@ def plot_top_ale(regr, X_test, savePath = None):
     X_test : test set data for creating plot
     
     """
-    # Which features need PDPs? print below line and choose the numbers
-    # corresponding to the feature
     features = ['ndvi','vpd_mean', 'slope','ppt_cv']
     feature_names = prettify_names_wunits(features)
     ftCnt = 0
-    figALEs, axs = plt.subplots(nrows=2, ncols=2, figsize = (2,2))
+    figALEs, axs = plt.subplots(nrows=2, ncols=2, figsize = (6,6))
     plt.subplots_adjust(hspace=0.5)
     plt.subplots_adjust(wspace=0.5)
     for feature, feature_name, ax in zip(features, feature_names, axs.ravel()):
@@ -578,7 +479,7 @@ def plot_top_ale(regr, X_test, savePath = None):
     
     figALEs.show()
     if savePath != None:
-        figALEs.savefig(savePath, dpi=300, bbox_inches='tight')
+        figALEs.savefig(savePath, dpi=600, bbox_inches='tight')
     return plt
 
 
@@ -602,18 +503,6 @@ def plot_R2_by_category(singleCat):
     plt.tight_layout()
      
     return plt
-
-def plot_scatter_feats(df_noSpec):
-    """
-    Plot joint KDE across features to get a feel for whether residual
-    co-variates lurking in certain sub-areas
-    """
-    g = sns.PairGrid(df_noSpec)
-    g.map_upper(sns.scatterplot)
-    g.map_lower(sns.kdeplot)
-    g.map_diag(sns.kdeplot, lw=3, legend=False)
-    
-    return g
 
 def regress_per_category(df, optHyperparam=False):
     """
@@ -673,28 +562,6 @@ def plot_map(arrayToPlot, pwsExtent, stateBorders, title = None, vmin = None, vm
         plt.savefig(savePath)
     plt.show() 
     
-def scatter_monsoon_cv(monsoon_ind, ppt_cv, savePath = None):
-    '''
-    density plot of cross-correlation between monsoon index and coefficient of
-    variation of precipitation to show U-shaped pattern
-    '''
-    
-    xy = np.vstack([monsoon_ind, ppt_cv])
-    kde = gaussian_kde(xy)(xy)
-
-
-    fig, ax = plt.subplots(figsize = (3,3)) 
-    ax.scatter(monsoon_ind, ppt_cv, c=kde, s = 1, alpha = 0.4, cmap='inferno')
-    ax.set_box_aspect(1)
-    ax.set_xlabel("Monsoon index [-]", fontsize = 14)
-    ax.set_ylabel("CV of precipitation [-]", fontsize = 14)
-    ax.set_xlim(0,0.7), ax.set_ylim(0,2.1)
-    plt.show()
-    
-    if savePath != None:
-        fig.savefig(savePath, dpi=300, bbox_inches='tight')
-
-    
 plt.rcParams.update({'font.size': 18})
 
 #%% Load data
@@ -704,11 +571,10 @@ df_wSpec =  load_data(dfPath, pwsPath)
 
 #sdroppedvarslist based on manual inspection so no cross-correlations greater than 0.75, see pickFeatures.py
 #further added nlcd to drop list since doesn't really make sense if focusing on fia plots
-droppedVarsList = ['elevation','dry_season_length','t_mean','ppt_mean','t_cv','monsoon_index',
+droppedVarsList = ['elevation','dry_season_length','t_mean','ppt_mean','t_cv','ppt_lte_100',
                 'canopy_height', 'HAND','restrictive_depth','clay',
                 'dist_to_water','basal_area','theta_third_bar','AWS','sand',
-                'agb','p50','gpmax','vpd_cv','root_depth']
-droppedVarsList = droppedVarsList + ['g1','c','isohydricity']
+                'agb','p50','gpmax','vpd_cv','root_depth','g1','c','isohydricity']
 df_wSpec = cleanup_data(df_wSpec, droppedVarsList)
 
 #remove pixels with NLCD status that is not woody
@@ -734,11 +600,11 @@ for var in df_noSpec.columns:
         reasonableNoise = 1e-5*df_noSpec[var].median()
         df_noSpec[var] = df_noSpec[var] + np.random.normal(0, reasonableNoise, len(df_noSpec))
 
-'''
+
 #now actually train model on everything except the species
 #Replace trained model with pickled version
 #prevMod = dill.load( open('C:/repos/data/RFregression_dill_backup_beforeRound2.pkl', 'rb') )
-prevMod = dill.load( open('C:/repos/data/rf_regression_dill_reconstructed.pkl', 'rb') )
+prevMod = dill.load( open('C:/repos/data/rf_regression_dill.pkl', 'rb') )
 regrn = getattr(prevMod, 'regrn')
 score = getattr(prevMod, 'score')
 imp = getattr(prevMod, 'imp')
@@ -748,13 +614,13 @@ y_test = getattr(prevMod, 'y_test')
 # old code:
 # Train rf#
 X_test, y_test, regrn, score,  imp = regress(df_noSpec, optHyperparam=False)  
+'''
 
 # make plots
-plt.show()
 ax = plot_corr_feats(df_noSpec)
 pltImp = plot_importance(imp)
-#pltALE = plot_top_ale(regrn, X_test, savePath = "../figures/PWSDriversPaper/ales_testSizes.jpeg")
-#pltALE = plot_top_ale(regrn, X_test, savePath = None)
+#pltALE = plot_top_ale(regrn, X_test, savePath = "../figures/PWSDriversPaper/ales.jpeg")
+pltALE = plot_top_ale(regrn, X_test, savePath = None)
 
 
 '''
@@ -786,6 +652,7 @@ print('amount explained with ONLY species info ' + str(coeffDeterm))
 print('fraction explained by species' + str(coeffDeterm/score))
 
 '''Plot Figure 3 with R2 for both RF and species'''
+y_hat =regrn.predict(X_test)
 #get full series of all predictions on all points (not separate train and test splits)
 rfPredAll =regrn.predict(df_noSpec.drop("pws",axis = 1))
 
@@ -794,7 +661,7 @@ kdeSp = gaussian_kde(xySp, bw_method=0.05)(xySp)
 xyRF = np.vstack([rfPredAll,pwsVec])
 kdeRF = gaussian_kde(xyRF, bw_method=0.05)(xyRF)
 
-fig, (ax1, ax2) = plt.subplots(1,2, figsize=(6, 4))
+fig, (ax1, ax2) = plt.subplots(1,2)
 ax1.scatter(pwsPred, pwsVec, c=kdeSp, s = 1, alpha = 0.4, cmap='inferno')
 ax1.set_box_aspect(1)
 ax1.set_xlabel("Predicted PWS", fontsize = 14)
@@ -821,7 +688,7 @@ ax2.annotate(f"R$^2$={score:0.2f}", (0.61,0.06),xycoords = "axes fraction",
 ax2.annotate('b)', (-0.2,1.10),xycoords = "axes fraction", 
              fontsize=14, weight='bold')
 fig.tight_layout()
-#plt.savefig("../figures/PWSDriversPaper/densityPlotsModels_testSizes.jpeg", dpi=300)
+plt.savefig("G:/My Drive/0000WorkComputer/dataStanford/PWSpeciesAnalysis/reconstructedv4densityPlotsModels.png", dpi=600)
 
 ''' 
 Make some maps of PWS as observed, predicted, and error
@@ -843,7 +710,7 @@ stateBorders = stateBorders[stateBorders['NAME'].isin(statesList)]
 
 
 
-#Plot PWS maps
+#Plot PWS 
 fig = plt.figure(figsize=(10, 3))
 gs = gridspec.GridSpec(1, 4, width_ratios=[1, 1, 1, 0.2])
 ax1 = fig.add_subplot(gs[0])
@@ -892,7 +759,7 @@ sm._A = []
 cbar = fig.colorbar(sm, cax=cbar_ax)
 cbar.ax.tick_params(labelsize=16)
 #plt.savefig("../figures/PWSDriversPaper/predictedPWSMaps.jpeg", dpi=300)
-error
+
 '''
 For reviewer 1/suppmat, calculate model performance without NDVI or VPD
 '''
