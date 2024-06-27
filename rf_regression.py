@@ -430,7 +430,7 @@ def plot_importance(imp):
     ax1.spines['top'].set_visible(False)
     ax1.text(-0.5, 1.05, 'b)', transform=ax1.transAxes, fontsize = 18, fontweight='bold', va='top', ha='left')
      
-    plt.savefig("../figures/PWSDriversPaper/importanceCombined.jpeg", dpi=300, bbox_inches='tight')
+    #plt.savefig("../figures/PWSDriversPaper/importanceCombined.jpeg", dpi=300, bbox_inches='tight')
     plt.show()
     
     
@@ -550,7 +550,7 @@ def plot_top_ale(regr, X_test, savePath = None):
     features = ['ndvi','vpd_mean', 'slope','ppt_cv']
     feature_names = prettify_names_wunits(features)
     ftCnt = 0
-    figALEs, axs = plt.subplots(nrows=2, ncols=2, figsize = (6,6))
+    figALEs, axs = plt.subplots(nrows=2, ncols=2, figsize = (2,2))
     plt.subplots_adjust(hspace=0.5)
     plt.subplots_adjust(wspace=0.5)
     for feature, feature_name, ax in zip(features, feature_names, axs.ravel()):
@@ -717,14 +717,6 @@ df_wSpec = df_wSpec[df_wSpec['nlcd']<70] #unique values are 41, 42, 43, 52
 df_wSpec = df_wSpec[df_wSpec['nlcd'] != 43] #unique values are 41, 42, 43, 52
 
 '''
-If keep monsoon index
-##make plot of cross-correlation between monsoon index and precipitation CV for reviewer 2
-scatter_monsoon_cv(df_wSpec['monsoon_index'], df_wSpec['ppt_cv'], savePath = "../figures/PWSDriversPaper/scatterPrecipVars.jpeg")
-#then further drop CV of precipitation from rest of analysis
-df_wSpec = cleanup_data(df_wSpec, 'ppt_cv')
-'''
-
-'''
 #save for exact use in checkCrossCorrs.py
 pickleLoc = 'C:/repos/pws_drivers/data/df_wSpec.pkl'
 with open(pickleLoc, 'wb') as file:
@@ -742,10 +734,11 @@ for var in df_noSpec.columns:
         reasonableNoise = 1e-5*df_noSpec[var].median()
         df_noSpec[var] = df_noSpec[var] + np.random.normal(0, reasonableNoise, len(df_noSpec))
 
-
+'''
 #now actually train model on everything except the species
 #Replace trained model with pickled version
-prevMod = dill.load( open('./RFregression_dill.pkl', 'rb') )
+#prevMod = dill.load( open('C:/repos/data/RFregression_dill_backup_beforeRound2.pkl', 'rb') )
+prevMod = dill.load( open('C:/repos/data/rf_regression_dill_reconstructed.pkl', 'rb') )
 regrn = getattr(prevMod, 'regrn')
 score = getattr(prevMod, 'score')
 imp = getattr(prevMod, 'imp')
@@ -755,12 +748,15 @@ y_test = getattr(prevMod, 'y_test')
 # old code:
 # Train rf#
 X_test, y_test, regrn, score,  imp = regress(df_noSpec, optHyperparam=False)  
-'''
 
 # make plots
+plt.show()
 ax = plot_corr_feats(df_noSpec)
 pltImp = plot_importance(imp)
-pltALE = plot_top_ale(regrn, X_test, savePath = "../figures/PWSDriversPaper/ales.jpeg")
+#pltALE = plot_top_ale(regrn, X_test, savePath = "../figures/PWSDriversPaper/ales_testSizes.jpeg")
+#pltALE = plot_top_ale(regrn, X_test, savePath = None)
+
+
 '''
 now check how explanatory power compares if don't have species 
 '''
@@ -790,7 +786,6 @@ print('amount explained with ONLY species info ' + str(coeffDeterm))
 print('fraction explained by species' + str(coeffDeterm/score))
 
 '''Plot Figure 3 with R2 for both RF and species'''
-y_hat =regrn.predict(X_test)
 #get full series of all predictions on all points (not separate train and test splits)
 rfPredAll =regrn.predict(df_noSpec.drop("pws",axis = 1))
 
@@ -799,7 +794,7 @@ kdeSp = gaussian_kde(xySp, bw_method=0.05)(xySp)
 xyRF = np.vstack([rfPredAll,pwsVec])
 kdeRF = gaussian_kde(xyRF, bw_method=0.05)(xyRF)
 
-fig, (ax1, ax2) = plt.subplots(1,2)
+fig, (ax1, ax2) = plt.subplots(1,2, figsize=(6, 4))
 ax1.scatter(pwsPred, pwsVec, c=kdeSp, s = 1, alpha = 0.4, cmap='inferno')
 ax1.set_box_aspect(1)
 ax1.set_xlabel("Predicted PWS", fontsize = 14)
@@ -826,7 +821,7 @@ ax2.annotate(f"R$^2$={score:0.2f}", (0.61,0.06),xycoords = "axes fraction",
 ax2.annotate('b)', (-0.2,1.10),xycoords = "axes fraction", 
              fontsize=14, weight='bold')
 fig.tight_layout()
-plt.savefig("../figures/PWSDriversPaper/densityPlotsModels.jpeg", dpi=300)
+#plt.savefig("../figures/PWSDriversPaper/densityPlotsModels_testSizes.jpeg", dpi=300)
 
 ''' 
 Make some maps of PWS as observed, predicted, and error
@@ -846,7 +841,9 @@ statesList = ['Washington','Oregon','California','Texas','Nevada','Idaho','Monta
               'Arizona','New Mexico','Colorado','Utah']    
 stateBorders = stateBorders[stateBorders['NAME'].isin(statesList)]    
 
-#Plot PWS 
+
+
+#Plot PWS maps
 fig = plt.figure(figsize=(10, 3))
 gs = gridspec.GridSpec(1, 4, width_ratios=[1, 1, 1, 0.2])
 ax1 = fig.add_subplot(gs[0])
@@ -894,14 +891,14 @@ sm = plt.cm.ScalarMappable(cmap='cool', norm=plt.Normalize(vmin=0, vmax=5))
 sm._A = []
 cbar = fig.colorbar(sm, cax=cbar_ax)
 cbar.ax.tick_params(labelsize=16)
-plt.savefig("../figures/PWSDriversPaper/predictedPWSMaps.jpeg", dpi=300)
-
+#plt.savefig("../figures/PWSDriversPaper/predictedPWSMaps.jpeg", dpi=300)
+error
 '''
 For reviewer 1/suppmat, calculate model performance without NDVI or VPD
 '''
 singleCat = regress_per_category(df_noSpec)
 pltR2Cat = plot_R2_by_category(singleCat)
-pltR2Cat.savefig("../figures/PWSDriversPaper/R2OnlyCategories.jpeg", dpi=300)
+#pltR2Cat.savefig("../figures/PWSDriversPaper/R2OnlyCategories.jpeg", dpi=300)
 print('no VPD')
 df_noVPD = df_noSpec.copy()
 df_noVPD.drop('vpd_mean', axis = 1, inplace = True)
@@ -917,4 +914,7 @@ df_noVPDnoNDVI.drop('vpd_mean', axis = 1, inplace = True)
 X_test_nVnN, y_test_nVnN, regrn_nVnN, score_noVPDnoNDVI, imp_nVnN = regress(df_noVPDnoNDVI, optHyperparam=False)
 
 
-#dill.dump_session('./RFregression_dill.pkl')
+#dill.dump_session('C:/repos/data/rf_regression_dill.pkl')
+print('saved ok')
+
+

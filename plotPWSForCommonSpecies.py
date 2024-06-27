@@ -138,7 +138,7 @@ noDataRows = topDomLocs.loc[~topDomLocs.species.isin(plotSpecList)]
 topDomLocs.drop(noDataRows.index, inplace=True)
 
 
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(2, 2))
 ax1 = sns.displot( topDomLocs, x='pws', hue='species', kind='kde', common_norm=False, \
             palette=sns.color_palette(n_colors=5), fill=False, bw_adjust=0.75, legend=False)
 sns.kdeplot(rfLocs['pws'], ax=ax1, color='k', bw_adjust=0.75)
@@ -146,7 +146,9 @@ plt.ylabel("Density", size=18); plt.xticks(fontsize=16)
 plt.xlabel("PWS", size=18); plt.yticks([], fontsize=16)
 plt.xlim(0,6)
 plt.legend(legLabels, loc="lower center", bbox_to_anchor=(0.5,-0.5), ncol=2, title=None, fontsize=18)
-#plt.savefig("../figures/PWSDriversPaper/PWSkdesbyspecies.jpeg", dpi=300)
+plt.savefig("../figures/PWSDriversPaper/PWSkdesbyspecies.eps", dpi=600)
+plt.savefig("../figures/PWSDriversPaper/PWSkdesbyspecies.pdf", dpi=600)
+plt.savefig("../figures/PWSDriversPaper/PWSkdesbyspecies.png", dpi=600)
 
 '''
 Calculate standard deviation of species means vs mean standard deviation per species

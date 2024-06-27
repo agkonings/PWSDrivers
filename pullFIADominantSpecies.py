@@ -102,12 +102,12 @@ for unSite in combdf['siteID'].unique():
             else:
                 noGoodCnt += 1            
 #store as pickle file for use elsewhere in mapping/exploring the data sources
-pickleLoc = '../data/dominantLocs.pkl'
+pickleLoc = './data/dominantLocs.pkl'
 with open(pickleLoc, 'wb') as file:
     pickle.dump(dominantLocs, file)
 #with open(pickleLoc, 'rb') as file:
 #    dominantLocs = pickle.load(file)
-
+error
                 
 #with COND_CN, leads to 138, 172 dominantLocs
 #of which there are 138,070 unique site IDs (so 100 plots within 4 km of each other)
